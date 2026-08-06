@@ -24,7 +24,7 @@
 
 ### Как будет выглядеть архитектура
 Так будет выглядеть итоговая архитектура демо-инсталляции
-![Architecture Diagram](images/zabbix-demo-architecture.jpg)
+![Architecture Diagram](images/demo-install.svg)
 
 
 
