@@ -31,12 +31,12 @@
 ### Где будем разворачивать
 Для работы окружения нам понадобится 7 серверов.
 
-| Компонент          | Количество | Имя сервера | IP адреса | Общие адреса| Общие имена|
-| --------------------- | ----- | --------------------- | --------------------- | ---------------------|---------------------|
-| PostgreSQL      | 3     | pg01, pg02, pg03 | 192.168.0.20, 192.168.0.21, 192.168.0.22|192.168.0.200 | pg-cluster|
-| Zabbix сервер   | 2     | zbx01, zbx02     | 192.168.0.10, 192.168.0.11| 192.168.0.100| zbx-cluster|
-| HAProxy         | 1     | haproxy          | 192.168.0.2 | | |
-| Grafana         | 1     | grafana          | 192.168.0.3 | | |
+| Компонент          | Количество | Имя сервера | IP адреса |
+| --------------------- | ----- | --------------------- | --------------------- | 
+| PostgreSQL      | 3     | pg01, pg02, pg03 | 192.168.0.20, 192.168.0.21, 192.168.0.22|
+| Zabbix сервер   | 2     | zbx01, zbx02     | 192.168.0.10, 192.168.0.11|
+| HAProxy         | 1     | haproxy          | 192.168.0.2 | 
+| Grafana         | 1     | grafana          | 192.168.0.3 | 
 
 
 
@@ -63,7 +63,7 @@
 На каждом сервере обновим ```/etc/hosts```, добавив записи.
 
 ```
-cat << EOF > /etc/hosts
+cat << EOF >> /etc/hosts
 192.168.0.2    haproxy
 192.168.0.3    grafana
 192.168.0.10   zbx01
@@ -71,8 +71,6 @@ cat << EOF > /etc/hosts
 192.168.0.20   pg01
 192.168.0.21   pg02
 192.168.0.22   pg03
-192.168.0.100  zbx-cluster
-192.168.0.200  pg-cluster
 EOF
 ```
 ### Установка компонентов БД: etcd, PostgreSQL, Patroni, TimescaleDB, PGBouncer
@@ -166,6 +164,7 @@ psql --version
 systemctl stop postgresql
 systemctl disable postgresql
 pg_dropcluster --stop 18 main
+rm -rf /var/lib/postgresql/18/main
 
 #### Установка Patroni
 
@@ -604,7 +603,7 @@ frontend http_frontend
 ##########################################################
 
 frontend monitoring_https
-    bind *:443 ssl crt ${CERT_PEM}
+    bind *:443 ssl crt /etc/haproxy/certs/haproxy.gals.training.pem
     mode http
 
     option httplog
@@ -614,24 +613,18 @@ frontend monitoring_https
     http-request set-header X-Forwarded-Port 443
     http-request set-header X-Forwarded-Host %[req.hdr(Host)]
 
-    # Нормализация адресов
-    http-request redirect location /zabbix/ code 301 if { path -i /zabbix }
-    http-request redirect location /grafana/ code 301 if { path -i /grafana }
-
-    # При открытии корня отправляем на Zabbix
-    http-request redirect location /zabbix/ code 302 if { path -i / }
-
-    # Маршрутизация по URL
+    acl root_path path -i /
+    acl zabbix_no_slash path -i /zabbix
+    acl grafana_no_slash path -i /grafana
     acl path_zabbix path_beg -i /zabbix/
     acl path_grafana path_beg -i /grafana/
 
+    http-request redirect location /zabbix/ code 302 if root_path
+    http-request redirect location /zabbix/ code 301 if zabbix_no_slash
+    http-request redirect location /grafana/ code 301 if grafana_no_slash
+
     use_backend zabbix_servers if path_zabbix
     use_backend grafana_server if path_grafana
-
-    # Для всех остальных адресов возвращаем 404
-    http-request return status 404 \
-        content-type text/plain \
-        string "Unknown monitoring endpoint\n"
 
 ##########################################################
 # Zabbix Frontend
@@ -652,8 +645,8 @@ backend zabbix_servers
 
     http-request set-header X-Forwarded-Prefix /zabbix
 
-    server zabbix-node1 ${ZABBIX_NODE1}:80 check
-    server zabbix-node2 ${ZABBIX_NODE2}:80 check
+    server zabbix-node1 192.168.0.10:80 check
+    server zabbix-node2 192.168.0.11:80 check
 
 ##########################################################
 # Grafana
@@ -689,8 +682,7 @@ listen postgres-replicas
     option httpchk GET /replica
     http-check expect status 200
 
-    default-server inter 2s fall 3 rise 2 \
-        on-marked-down shutdown-sessions
+    default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
 
     server pg01 192.168.0.20:6432 check port 8008
     server pg02 192.168.0.21:6432 check port 8008
@@ -701,7 +693,7 @@ listen postgres-replicas
 ##########################################################
 
 listen postgres-primary
-    bind ${HAPROXY_PRIVATE_IP}:5432
+    bind 192.168.0.2:5432
 
     mode tcp
     option tcplog
@@ -710,12 +702,11 @@ listen postgres-primary
     option httpchk GET /primary
     http-check expect status 200
 
-    default-server inter 2s fall 3 rise 2 \
-        on-marked-down shutdown-sessions
+    default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
 
-    server pg01 ${PG01}:6432 check port 8008
-    server pg02 ${PG02}:6432 check port 8008
-    server pg03 ${PG03}:6432 check port 8008
+    server pg01 192.168.0.20:6432 check port 8008
+    server pg02 192.168.0.21:6432 check port 8008
+    server pg03 192.168.0.22:6432 check port 8008
 
 ##########################################################
 # HAProxy Stats
