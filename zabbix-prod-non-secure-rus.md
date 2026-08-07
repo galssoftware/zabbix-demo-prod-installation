@@ -435,14 +435,7 @@ patronictl -c /etc/patroni/config.yml restart postgres-cluster pg01
 sudo -u postgres psql -h 127.0.0.1 -p 5432 -d postgres
 SHOW shared_preload_libraries;
 ```
-Создайте расширение на Leader:
-```
-sudo -u postgres psql \
-  -h 127.0.0.1 \
-  -d zabbix_server \
-  -v ON_ERROR_STOP=1 \
-  -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
-```
+
 
 #### Установка PGBouncer
 Установите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03)
@@ -820,6 +813,17 @@ psql \
   -d zabbix_server \
   -c "\dt"
 ```
+Создайте расширение TimescaleDB на Leader:
+```
+PGPASSWORD='2tdxZ898D9MR' \
+psql \
+  -h 127.0.0.1 \
+  -d zabbix_server \
+  -v ON_ERROR_STOP=1 \
+  -U postgres \
+  -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
+```
+
 Настройте Zabbix на использование гипертаблиц. Скрипт timescaledb/schema.sql создает hypertable и настраивает параметры housekeeping и сжатия. Предупреждения TimescaleDB 2.9+ о несоблюдении некоторых best practices при выполнении этого скрипта можно игнорировать — Zabbix указывает, что настройка при этом завершается успешно.
 ```
 PGPASSWORD='2tdxZ898D9MR' \
