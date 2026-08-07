@@ -400,11 +400,11 @@ tags:
 ```
 systemctl enable patroni --now
 ```
-Убедитесь, что Patroni видит все ноды
+Убедитесь, что Patroni видит все ноды. В ответе вы должны увидеть 3 ноды кластера.
 ```
 patronictl -c /etc/patroni/config.yml list
 ```
-На этом установка Patroni завершена
+На этом установка Patroni завершена.
 #### Установка TimescaleDB
 Добавьте репозиторий TimescaleDB (выполните на 3 серверах БД: pg01, pg02, pg03)
 ```
@@ -426,9 +426,9 @@ postgresql:
 ```
 После этого перезагрузить последовательно ноды PostgreSQL. Начните с реплик и закончите лидером.
 ```
-patronictl -c /etc/patroni/patroni.yml restart postgres-cluster pg02
-patronictl -c /etc/patroni/patroni.yml restart postgres-cluster pg03
-patronictl -c /etc/patroni/patroni.yml restart postgres-cluster pg01
+patronictl -c /etc/patroni/config.yml restart postgres-cluster pg02
+patronictl -c /etc/patroni/config.yml restart postgres-cluster pg03
+patronictl -c /etc/patroni/config.yml restart postgres-cluster pg01
 ```
 После перезагрузки убедитесь, что расширение загрузилось
 ```
