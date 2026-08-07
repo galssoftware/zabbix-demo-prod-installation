@@ -87,7 +87,7 @@ nano /etc/default/etcd
 ```
 На ноде pg01
 ```
-cat << EOF > /etc/default/etcd
+cat << EOF >> /etc/default/etcd
 ETCD_NAME="pg01"
 ETCD_DATA_DIR="/var/lib/etcd"
 ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.0.20:2380"
@@ -101,7 +101,7 @@ EOF
 ```
 На ноде pg02
 ```
-cat << EOF > /etc/default/etcd
+cat << EOF >> /etc/default/etcd
 TCD_NAME="pg02"
 ETCD_DATA_DIR="/var/lib/etcd"
 ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.0.21:2380"
@@ -115,7 +115,7 @@ EOF
 ```
 На ноде pg03
 ```
-cat << EOF > /etc/default/etcd
+cat << EOF >> /etc/default/etcd
 ETCD_NAME="pg03"
 ETCD_DATA_DIR="/var/lib/etcd"
 ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.0.22:2380"
@@ -161,10 +161,10 @@ apt install -y postgresql-18
 psql --version
 ```
 Так как для управления БД мы будем использовать Patroni, нужно остановить сервис СУБД, удалить его из автозагрузки и удалить созданный кластер.
-systemctl stop postgresql
-systemctl disable postgresql
+```
+systemctl disable postgresql --now
 pg_dropcluster --stop 18 main
-rm -rf /var/lib/postgresql/18/main
+```
 
 #### Установка Patroni
 
@@ -398,7 +398,7 @@ tags:
 ```
 Перезагрузите Patroni
 ```
-systemctl restart patroni
+systemctl enable patroni --now
 ```
 На этом установка Patroni завершена
 #### Установка TimescaleDB
