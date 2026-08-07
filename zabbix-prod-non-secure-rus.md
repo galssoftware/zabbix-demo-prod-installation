@@ -438,12 +438,10 @@ SHOW shared_preload_libraries;
 
 
 #### Установка PGBouncer
-Установите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03)
+Установите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03), добавьте его в автозагрузку и остановите
 ```
 apt install -y pgbouncer
-```
-Остановите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03)
-```
+systemctl enable pgbouncer
 systemctl stop pgbouncer
 ```
 
