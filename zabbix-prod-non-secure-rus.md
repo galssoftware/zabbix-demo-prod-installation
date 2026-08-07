@@ -165,7 +165,7 @@ psql --version
 systemctl disable postgresql --now
 pg_dropcluster --stop 18 main
 ```
-
+На этом установка БД завершена.
 #### Установка Patroni
 
 Все действия, описанные в этом разделе, выполняются на 3 серверах БД: pg01, pg02, pg03.
@@ -399,6 +399,10 @@ tags:
 Перезагрузите Patroni
 ```
 systemctl enable patroni --now
+```
+Убедитесь, что Patroni видит все ноды
+```
+patronictl -c /etc/patroni/config.yml list
 ```
 На этом установка Patroni завершена
 #### Установка TimescaleDB
