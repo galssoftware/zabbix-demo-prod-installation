@@ -454,9 +454,8 @@ systemctl stop pgbouncer
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
   -h 127.0.0.1 \
-  -p 6432 \
-  -U zabbix_srv \
-  -d zabbix_server
+  -p 5432 \
+  -U postgres
 
 CREATE ROLE zabbix_srv LOGIN PASSWORD '2tdxZ898D9MR';
 CREATE ROLE zabbix_web LOGIN PASSWORD '2tdxZ898D9MR';
@@ -468,7 +467,7 @@ CREATE DATABASE grafana OWNER 'grafana';
 Получиnt SCRAM-секреты пользователей (понадобятся для работы PGBouncer)
 SELECT rolname || '|' || rolpassword FROM pg_authid WHERE rolname IN ('zabbix_srv', 'zabbix_web', 'grafana', 'grafana_zabbix');
 
-Добавьте записи в конфигурационный файл /etc/pgbouncer/userlist.txt (выполните на 3 серверах БД: pg01, pg02, pg03)
+Добавьте записи в конфигурационный файл /etc/pgbouncer/userlist.txt (выполните на 3 серверах БД: pg01, pg02, pg03). В вашем случае хэши паролей будут отличаться.
 ```
 nano /etc/pgbouncer/userlist.txt 
 "zabbix_srv" "SCRAM-SHA-256$4096:Dt2pydTlGUvc9CckB8EGBw==$d6z6YYLy+A8B3bdxucXDVpg85gl84tIJehhIyHuVvwg=:R9NctBV2LcaXql3PsNDp3YuFjDVX2KftF9C2IENK3uE="
@@ -482,17 +481,18 @@ chown postgres:postgres /etc/pgbouncer/userlist.txt
 chmod 600 /etc/pgbouncer/userlist.txt
 ```
 
-Модифицируйте файл /etc/pgbouncer/pgbouncer.ini (выполните на 3 серверах БД: pg01, pg02, pg03)
+Модифицируйте файл /etc/pgbouncer/pgbouncer.ini (выполните на 3 серверах БД: pg01, pg02, pg03), добавив/изменив значения в соответствующих секциях
 ```
 nano /etc/pgbouncer/pgbouncer.ini
+[databases]
 zabbix_server = host=127.0.0.1 port=5432 dbname=zabbix_server
 grafana = host=127.0.0.1 port=5432 dbname=grafana pool_mode=session
+[pgbouncer]
 listen_addr = 0.0.0.0
 auth_type = scram-sha-256
 pool_mode = transaction
 max_client_conn = 500
 default_pool_size = 100
-
 ```
  
 Перезагрузите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03)
@@ -735,7 +735,6 @@ chown haproxy:haproxy ${CERT_PEM}
 chmod 600 ${CERT_PEM}
 
 systemctl reload haproxy
-EOF
 
 chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-haproxy.sh
 
