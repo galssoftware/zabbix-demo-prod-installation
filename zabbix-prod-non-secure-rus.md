@@ -23,7 +23,7 @@
 
 
 ### Как будет выглядеть архитектура
-Так будет выглядеть итоговая архитектура демо-инсталляции
+Так будет выглядеть итоговая архитектура демо-инсталляции. Haproxy на схеме повторяется несколько раз, но мы его будем использовать в единственном экземпляре. В боевых средах haproxy и grafana следует дублировать.
 ![Architecture Diagram](images/demo-install.svg)
 
 
@@ -749,8 +749,7 @@ echo "Готово."
 echo "Zabbix HTTPS: https://${DOMAIN}"
 echo "PostgreSQL endpoint: ${HAPROXY_PRIVATE_IP}:5432"
 ```
-
-
+На этом установка и настройка haproxy завершена.
 
 ### Установка Zabbix Server, Zabbix Frontend
 
