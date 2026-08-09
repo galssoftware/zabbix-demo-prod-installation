@@ -781,6 +781,7 @@ apt install -y \
 patronictl -c /etc/patroni/config.yml list
 ```
 Проверьте прямое подключение к БД через haproxy с обоих Zabbix-серверов
+```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
   -h "192.168.0.2" \
@@ -788,7 +789,7 @@ psql \
   -U zabbix_srv \
   -d zabbix_server \
   -c "SELECT current_user, current_database(), pg_is_in_recovery();"
-
+```
 Импортируйте основную схему Zabbix
 ```
 zcat /usr/share/zabbix/sql-scripts/postgresql/server.sql.gz \
