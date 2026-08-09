@@ -621,6 +621,8 @@ frontend monitoring_https
     use_backend zabbix_servers if path_zabbix
     use_backend grafana_server if path_grafana
 
+    default_backend unknown_endpoint
+
 ##########################################################
 # Zabbix Frontend
 ##########################################################
@@ -629,16 +631,14 @@ backend zabbix_servers
     mode http
     balance roundrobin
 
-    option httpchk GET /zabbix.php
+    option httpchk GET /
     http-check expect status 200
 
     default-server inter 5s fall 3 rise 2
 
-    # Убираем /zabbix перед передачей запроса на Nginx Zabbix.
-    # /zabbix/index.php -> /index.php
-    http-request set-path %[path,regsub(^/zabbix/?/,/)]
-
+    http-request set-path %[path,regsub(^/zabbix/,/)]
     http-request set-header X-Forwarded-Prefix /zabbix
+    http-request set-header X-Forwarded-Proto https
 
     server zabbix-node1 192.168.0.10:80 check
     server zabbix-node2 192.168.0.11:80 check
@@ -655,13 +655,22 @@ backend grafana_server
 
     default-server inter 5s fall 3 rise 2
 
-    # Для Grafana префикс не удаляем:
-    # сама Grafana будет настроена для работы из /grafana
     http-request set-header X-Forwarded-Prefix /grafana
     http-request set-header X-Forwarded-Proto https
     http-request set-header X-Forwarded-Host %[req.hdr(Host)]
 
     server grafana 192.168.0.3:3000 check
+
+##########################################################
+# Unknown
+##########################################################
+
+backend unknown_endpoint
+    mode http
+
+    http-request return status 404 \
+        content-type text/plain \
+        string "Unknown monitoring endpoint\n"
 
 ##########################################################
 # PostgreSQL replicas — Grafana Direct DB
@@ -750,6 +759,10 @@ echo "Zabbix HTTPS: https://${DOMAIN}"
 echo "PostgreSQL endpoint: ${HAPROXY_PRIVATE_IP}:5432"
 ```
 На этом установка и настройка haproxy завершена.
+Убедитесь, что сервис haproxy успешно запустился
+```
+systemctl status haproxy
+```
 
 ### Установка Zabbix Server, Zabbix Frontend
 
@@ -784,7 +797,7 @@ patronictl -c /etc/patroni/config.yml list
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "192.168.0.2" \
+  -h "haproxy" \
   -p 5432 \
   -U zabbix_srv \
   -d zabbix_server \
@@ -795,7 +808,7 @@ psql \
 zcat /usr/share/zabbix/sql-scripts/postgresql/server.sql.gz \
 | PGPASSWORD='2tdxZ898D9MR' \
   psql \
-    -h "192.168.0.2" \
+    -h "haproxy" \
     -p 5432 \
     -U zabbix_srv \
     -d zabbix_server \
@@ -814,7 +827,7 @@ psql \
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h 127.0.0.1 \
+  -h haproxy \
   -d zabbix_server \
   -v ON_ERROR_STOP=1 \
   -U postgres \
