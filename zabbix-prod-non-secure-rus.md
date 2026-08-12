@@ -45,7 +45,7 @@ Keepalived обеспечивает автоматическое переклю�
 
 В конфигурации используются два отдельных скрипта:
 
-- `setup-haproxy.sh` — установка и настройка HAProxy;
+- [configs/setup-haproxy.sh](`setup-haproxy.sh`) — установка и настройка HAProxy;
 - `setup-keepalived.sh` — установка и настройка Keepalived.
 
 Сами скрипты и их описание приведено ниже в документации.
