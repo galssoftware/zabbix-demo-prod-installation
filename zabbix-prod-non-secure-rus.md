@@ -46,9 +46,9 @@ Keepalived обеспечивает автоматическое переклю�
 В конфигурации используются два отдельных скрипта:
 
 - [`setup-haproxy.sh`](configs/setup-haproxy.sh) — установка и настройка HAProxy;
-- `setup-keepalived.sh` — установка и настройка Keepalived.
+- [`setup-keepalived.sh`](configs/setup-keepalived.sh) — установка и настройка Keepalived.
 
-Сами скрипты и их описание приведено ниже в документации.
+Описание принципа работы скриптов приведено ниже в документации.
 
 ## Где будем разворачивать
 Для работы окружения нам понадобится 9 серверов.
@@ -163,7 +163,7 @@ etcdctl endpoint health --cluster=true
 ```
 На этом установка etcd завершена.
 
-#### Установка PostgreSQL
+### Установка PostgreSQL
 
 Все действия, описанные в этом разделе, выполняются на 3 серверах БД: pg01, pg02, pg03.
 Начнем с установки БД PostgreSQL. Добавим репозиторий.
@@ -192,7 +192,7 @@ systemctl disable postgresql --now
 pg_dropcluster --stop 18 main
 ```
 На этом установка БД завершена.
-#### Установка Patroni
+### Установка Patroni
 
 Все действия, описанные в этом разделе, выполняются на 3 серверах БД: pg01, pg02, pg03.
 Установите Patroni
@@ -431,7 +431,7 @@ systemctl enable patroni --now
 patronictl -c /etc/patroni/config.yml list
 ```
 На этом установка Patroni завершена.
-#### Установка TimescaleDB
+### Установка TimescaleDB
 Добавьте репозиторий TimescaleDB (выполните на 3 серверах БД: pg01, pg02, pg03)
 ```
 curl -fsSL https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/timescaledb-archive-keyring.gpg
@@ -463,7 +463,7 @@ SHOW shared_preload_libraries;
 ```
 
 
-#### Установка PGBouncer
+### Установка PGBouncer
 Установите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03), добавьте его в автозагрузку и остановите
 ```
 apt install -y pgbouncer
@@ -537,1230 +537,534 @@ psql \
 ```
 На репликах в столбце pg_is_in_recovery получите t, а на лидере f.
 
-## Настройка балансировки нагрузки
+## Настройка балансировки нагрузки (HAProxy + Keepalived)
 
+В этом разделе описаны принципы работы скриптов-установщиков и порядок действий для установки компонентов.
 
+### Установка HAProxy
+Выполните установку haproxy на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-haproxy.sh`](configs/setup-haproxy.sh).
 
-### Установка Haproxy
-Выполните установку haproxy на обоих нодах haproxy: haproxy01 и haproxy02. Скрипт установит и запустит haproxy, создаст сертификаты Let's Encrypt, применит необходимую конфигурацию и перенесет сертификаты Let's Encrypt на сервер haproxy02.
+<details>
+<summary>Детальное описание принципов работы скрипта</summary>
+Скрипт `setup-haproxy.sh` предназначен для автоматизированной установки и настройки HAProxy на серверах:
+
+```text
+haproxy01 — 192.168.0.2
+haproxy02 — 192.168.0.3
 ```
-#!/usr/bin/env bash
 
-set -euo pipefail
+Один и тот же скрипт может запускаться на обеих нодах. Скрипт автоматически определяет текущий сервер по его IP-адресу и применяет соответствующие параметры.
 
+HAProxy используется как единая точка доступа к следующим сервисам:
 
-##########################################################
-# General configuration
-##########################################################
+```text
+Zabbix
+Grafana
+PostgreSQL / Patroni
+```
 
-DOMAIN="haproxy.gals.training"
-EMAIL="admin@gals.training"
+---
 
-# Public IP
-PUBLIC_IP="185.161.66.194"
+#### Устанавливаемые компоненты
 
+Скрипт устанавливает необходимые пакеты:
 
-##########################################################
-# HAProxy nodes
-##########################################################
+```text
+haproxy
+certbot
+ca-certificates
+curl
+dnsutils
+openssl
+openssh-client
+```
 
-HAPROXY01_IP="192.168.0.2"
-HAPROXY02_IP="192.168.0.3"
+Установка выполняется в неинтерактивном режиме.
 
-HAPROXY01_HOST="haproxy01"
-HAPROXY02_HOST="haproxy02"
+Для предотвращения перезаписи локально изменённых конфигурационных файлов, например:
 
-# Keepalived VIP
-HAPROXY_VIP="192.168.0.100"
+```text
+/etc/ssh/sshd_config
+```
 
+используются параметры:
 
-##########################################################
-# Certificate manager
-##########################################################
-#
-# Let's Encrypt certificate is issued and renewed
-# only on haproxy01.
-#
-##########################################################
+```text
+--force-confdef
+--force-confold
+```
 
-CERT_MANAGER_IP="${HAPROXY01_IP}"
-CERT_MANAGER_HOST="${HAPROXY01_HOST}"
+Таким образом, существующие настройки SSH сохраняются.
 
-# Certbot standalone listens locally on 8888.
-#
-# External Let's Encrypt HTTP-01 validation always comes
-# to port 80.
-#
-# HAProxy forwards:
-#
-# /.well-known/acme-challenge/
-#
-# to:
-#
-# haproxy01:8888
-#
-##########################################################
+---
 
-CERTBOT_PORT="8888"
+#### Определение HAProxy-ноды
 
+Скрипт автоматически определяет, на каком сервере он выполняется.
 
-##########################################################
-# Zabbix frontend nodes
-##########################################################
+Для `haproxy01`:
 
-ZABBIX_NODE1="192.168.0.10"
-ZABBIX_NODE2="192.168.0.11"
+```text
+IP:       192.168.0.2
+Hostname: haproxy01
+Peer:     haproxy02
+```
 
+Для `haproxy02`:
 
-##########################################################
-# Grafana nodes
-##########################################################
+```text
+IP:       192.168.0.3
+Hostname: haproxy02
+Peer:     haproxy01
+```
 
-GRAFANA_NODE1="192.168.0.4"
-GRAFANA_NODE2="192.168.0.5"
+Определение выполняется по локальному IP-адресу интерфейса.
 
+---
 
-##########################################################
-# PostgreSQL Patroni nodes
-##########################################################
+#### Работа с виртуальным IP
 
-PG01="192.168.0.20"
-PG02="192.168.0.21"
-PG03="192.168.0.22"
+Для PostgreSQL HAProxy слушает виртуальный адрес Keepalived:
 
+```text
+192.168.0.100
+```
 
-##########################################################
-# Certificate paths
-##########################################################
+Так как на BACKUP-сервере данный IP физически отсутствует до момента failover, скрипт включает системный параметр:
 
-CERT_DIR="/etc/haproxy/certs"
-
-CERT_PEM="${CERT_DIR}/${DOMAIN}.pem"
-
-LE_LIVE="/etc/letsencrypt/live/${DOMAIN}"
-
-
-##########################################################
-# SSH options
-##########################################################
-#
-# BatchMode=yes
-#   Не запрашивать SSH password.
-#
-# StrictHostKeyChecking=accept-new
-#   Новый SSH fingerprint автоматически добавляется
-#   в /root/.ssh/known_hosts.
-#
-#   Если fingerprint уже известного сервера изменится,
-#   SSH остановит подключение.
-#
-##########################################################
-
-SSH_OPTS=(
-    -o BatchMode=yes
-    -o ConnectTimeout=5
-    -o StrictHostKeyChecking=accept-new
-)
-
-SCP_OPTS=(
-    -o BatchMode=yes
-    -o ConnectTimeout=5
-    -o StrictHostKeyChecking=accept-new
-)
-
-
-##########################################################
-# Detect current HAProxy node
-##########################################################
-
-echo
-echo "======================================================"
-echo "Detecting HAProxy node"
-echo "======================================================"
-
-if ip -4 addr show | grep -qE "\b${HAPROXY01_IP}/"; then
-
-    LOCAL_IP="${HAPROXY01_IP}"
-    LOCAL_HOST="${HAPROXY01_HOST}"
-
-    PEER_IP="${HAPROXY02_IP}"
-    PEER_HOST="${HAPROXY02_HOST}"
-
-    NODE_NAME="haproxy01"
-
-elif ip -4 addr show | grep -qE "\b${HAPROXY02_IP}/"; then
-
-    LOCAL_IP="${HAPROXY02_IP}"
-    LOCAL_HOST="${HAPROXY02_HOST}"
-
-    PEER_IP="${HAPROXY01_IP}"
-    PEER_HOST="${HAPROXY01_HOST}"
-
-    NODE_NAME="haproxy02"
-
-else
-
-    echo
-    echo "ERROR:"
-    echo
-    echo "Эта нода не имеет ни одного из ожидаемых IP:"
-    echo
-    echo "  ${HAPROXY01_IP}"
-    echo "  ${HAPROXY02_IP}"
-    echo
-
-    exit 1
-fi
-
-
-echo
-echo "Node       : ${NODE_NAME}"
-echo "Local host : ${LOCAL_HOST}"
-echo "Local IP   : ${LOCAL_IP}"
-echo "Peer host  : ${PEER_HOST}"
-echo "Peer IP    : ${PEER_IP}"
-echo "VIP        : ${HAPROXY_VIP}"
-
-
-##########################################################
-# Non-interactive APT
-##########################################################
-#
-# Важно:
-#
-# --force-confold
-#
-# сохраняет существующую локально изменённую конфигурацию,
-# например:
-#
-# /etc/ssh/sshd_config
-#
-# Вместо появления диалога:
-#
-# "What do you want to do about modified configuration..."
-#
-##########################################################
-
-echo
-echo "======================================================"
-echo "Installing packages"
-echo "======================================================"
-
-export DEBIAN_FRONTEND=noninteractive
-
-# Автоматически обработать возможный needrestart
-export NEEDRESTART_MODE=a
-
-
-apt-get update
-
-
-apt-get install -y \
-    -o Dpkg::Options::="--force-confdef" \
-    -o Dpkg::Options::="--force-confold" \
-    haproxy \
-    certbot \
-    ca-certificates \
-    curl \
-    dnsutils \
-    openssl \
-    openssh-client
-
-
-##########################################################
-# Allow HAProxy to bind Keepalived VIP on BACKUP
-##########################################################
-
-echo
-echo "======================================================"
-echo "Configuring ip_nonlocal_bind"
-echo "======================================================"
-
-cat > /etc/sysctl.d/99-haproxy.conf <<EOF
+```text
 net.ipv4.ip_nonlocal_bind = 1
-EOF
-
-
-sysctl -w net.ipv4.ip_nonlocal_bind=1 >/dev/null
-
-
-##########################################################
-# Prepare SSH directory
-##########################################################
-
-mkdir -p /root/.ssh
-
-chmod 700 /root/.ssh
-
-touch /root/.ssh/known_hosts
-
-chmod 600 /root/.ssh/known_hosts
-
-
-##########################################################
-# Certificate directory
-##########################################################
-
-mkdir -p "${CERT_DIR}"
-
-chown root:haproxy "${CERT_DIR}"
-
-chmod 750 "${CERT_DIR}"
-
-
-##########################################################
-# Backup HAProxy configuration
-##########################################################
-
-if [[ -f /etc/haproxy/haproxy.cfg ]]; then
-
-    BACKUP_FILE="/etc/haproxy/haproxy.cfg.bak.$(date +%F-%H%M%S)"
-
-    cp \
-        /etc/haproxy/haproxy.cfg \
-        "${BACKUP_FILE}"
-
-    echo
-    echo "Existing HAProxy configuration backup:"
-    echo
-    echo "  ${BACKUP_FILE}"
-fi
-
-
-##########################################################
-# Create temporary certificate if necessary
-##########################################################
-#
-# HAProxy requires certificate during config validation.
-#
-# Therefore we create temporary self-signed certificate
-# before obtaining Let's Encrypt certificate.
-#
-##########################################################
-
-if [[ ! -s "${CERT_PEM}" ]]; then
-
-    echo
-    echo "======================================================"
-    echo "Creating temporary self-signed certificate"
-    echo "======================================================"
-
-    TMP_KEY="/tmp/${DOMAIN}.key"
-    TMP_CERT="/tmp/${DOMAIN}.crt"
-
-    openssl req \
-        -x509 \
-        -nodes \
-        -newkey rsa:2048 \
-        -days 1 \
-        -subj "/CN=${DOMAIN}" \
-        -keyout "${TMP_KEY}" \
-        -out "${TMP_CERT}"
-
-
-    cat \
-        "${TMP_CERT}" \
-        "${TMP_KEY}" \
-        > "${CERT_PEM}"
-
-
-    chown root:haproxy "${CERT_PEM}"
-
-    chmod 640 "${CERT_PEM}"
-
-
-    rm -f \
-        "${TMP_KEY}" \
-        "${TMP_CERT}"
-fi
-
-
-##########################################################
-# HAProxy configuration
-##########################################################
-
-echo
-echo "======================================================"
-echo "Creating HAProxy configuration"
-echo "======================================================"
-
-cat > /etc/haproxy/haproxy.cfg <<EOF
-global
-    log /dev/log local0
-    log /dev/log local1 notice
-
-    user haproxy
-    group haproxy
-
-    maxconn 5000
-    daemon
-
-    ssl-default-bind-options ssl-min-ver TLSv1.2
-
-
-defaults
-    log global
-
-    timeout connect 5s
-    timeout client 1h
-    timeout server 1h
-    timeout check 3s
-
-
-##########################################################
-# HTTP frontend
-##########################################################
-
-frontend http_frontend
-    bind *:80
-
-    mode http
-
-    option httplog
-
-    # Let's Encrypt HTTP-01 challenge
-    acl acme_challenge path_beg /.well-known/acme-challenge/
-
-    use_backend acme_backend if acme_challenge
-
-    # Everything except ACME challenge goes to HTTPS
-    http-request redirect scheme https code 301 unless acme_challenge
-
-
-##########################################################
-# Let's Encrypt ACME backend
-##########################################################
-
-backend acme_backend
-    mode http
-
-    server certbot ${CERT_MANAGER_IP}:${CERTBOT_PORT}
-
-
-##########################################################
-# HTTPS frontend
-##########################################################
-
-frontend monitoring_https
-    bind *:443 ssl crt ${CERT_PEM}
-
-    mode http
-
-    option httplog
-    option forwardfor
-
-    http-request set-header X-Forwarded-Proto https
-    http-request set-header X-Forwarded-Port 443
-    http-request set-header X-Forwarded-Host %[req.hdr(Host)]
-
-    acl root_path path -i /
-
-    acl zabbix_no_slash path -i /zabbix
-    acl grafana_no_slash path -i /grafana
-
-    acl path_zabbix path_beg -i /zabbix/
-    acl path_grafana path_beg -i /grafana/
-
-    # Default URL -> Zabbix
-    http-request redirect location /zabbix/ code 302 if root_path
-
-    # Add trailing slash
-    http-request redirect location /zabbix/ code 301 if zabbix_no_slash
-    http-request redirect location /grafana/ code 301 if grafana_no_slash
-
-    use_backend zabbix_servers if path_zabbix
-    use_backend grafana_servers if path_grafana
-
-    default_backend unknown_endpoint
-
-
-##########################################################
-# Zabbix frontend cluster
-##########################################################
-
-backend zabbix_servers
-    mode http
-
-    balance roundrobin
-
-    option httpchk GET /
-    http-check expect status 200
-
-    default-server inter 5s fall 3 rise 2
-
-    # /zabbix/index.php -> /index.php
-    http-request set-path %[path,regsub(^/zabbix/,/)]
-
-    http-request set-header X-Forwarded-Prefix /zabbix
-    http-request set-header X-Forwarded-Proto https
-
-    server zbx01 ${ZABBIX_NODE1}:80 check
-    server zbx02 ${ZABBIX_NODE2}:80 check
-
-
-##########################################################
-# Grafana cluster
-##########################################################
-
-backend grafana_servers
-    mode http
-
-    balance roundrobin
-
-    option httpchk GET /api/health
-    http-check expect status 200
-
-    default-server inter 5s fall 3 rise 2
-
-    http-request set-header X-Forwarded-Prefix /grafana
-    http-request set-header X-Forwarded-Proto https
-    http-request set-header X-Forwarded-Host %[req.hdr(Host)]
-
-    server grafana01 ${GRAFANA_NODE1}:3000 check
-    server grafana02 ${GRAFANA_NODE2}:3000 check
-
-
-##########################################################
-# Unknown endpoint
-##########################################################
-
-backend unknown_endpoint
-    mode http
-
-    http-request return status 404 content-type text/plain string "Unknown monitoring endpoint\n"
-
-
-##########################################################
-# PostgreSQL replicas
-##########################################################
-
-listen postgres-replicas
-    bind ${HAPROXY_VIP}:5433
-
-    mode tcp
-
-    option tcplog
-
-    balance roundrobin
-
-    option httpchk GET /replica
-    http-check expect status 200
-
-    default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
-
-    server pg01 ${PG01}:6432 check port 8008
-    server pg02 ${PG02}:6432 check port 8008
-    server pg03 ${PG03}:6432 check port 8008
-
-
-##########################################################
-# PostgreSQL Patroni leader
-##########################################################
-
-listen postgres-primary
-    bind ${HAPROXY_VIP}:5432
-
-    mode tcp
-
-    option tcplog
-
-    balance first
-
-    option httpchk GET /primary
-    http-check expect status 200
-
-    default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
-
-    server pg01 ${PG01}:6432 check port 8008
-    server pg02 ${PG02}:6432 check port 8008
-    server pg03 ${PG03}:6432 check port 8008
-
-
-##########################################################
-# HAProxy statistics
-##########################################################
-
-listen stats
-    bind 127.0.0.1:7000
-
-    mode http
-
-    stats enable
-    stats uri /
-    stats refresh 5s
-
-    stats auth admin:admin
-
-EOF
-
-
-##########################################################
-# Validate HAProxy configuration
-##########################################################
-
-echo
-echo "======================================================"
-echo "Validating HAProxy configuration"
-echo "======================================================"
-
-haproxy -c -f /etc/haproxy/haproxy.cfg
-
-
-##########################################################
-# Enable and start HAProxy
-##########################################################
-
-systemctl enable haproxy
-
-systemctl restart haproxy
-
-
-##########################################################
-# Check HAProxy
-##########################################################
-
-if ! systemctl is-active --quiet haproxy; then
-
-    echo
-    echo "======================================================"
-    echo "ERROR: HAProxy failed to start"
-    echo "======================================================"
-
-    journalctl \
-        -u haproxy \
-        -n 50 \
-        --no-pager
-
-    exit 1
-fi
-
-
-##########################################################
-# SSH connection preparation
-##########################################################
-
-prepare_ssh_host()
-{
-    local TARGET_HOST="$1"
-
-    echo
-    echo "======================================================"
-    echo "Checking SSH connection to ${TARGET_HOST}"
-    echo "======================================================"
-
-    mkdir -p /root/.ssh
-
-    chmod 700 /root/.ssh
-
-    touch /root/.ssh/known_hosts
-
-    chmod 600 /root/.ssh/known_hosts
-
-
-    if ! ssh \
-        "${SSH_OPTS[@]}" \
-        root@"${TARGET_HOST}" \
-        "true"
-    then
-
-        echo
-        echo "ERROR:"
-        echo
-        echo "SSH connection to ${TARGET_HOST} failed."
-        echo
-        echo "The script expects SSH key authentication"
-        echo "to already be configured."
-        echo
-        echo "Check manually:"
-        echo
-        echo "  ssh root@${TARGET_HOST}"
-        echo
-
-        return 1
-    fi
-
-
-    echo
-    echo "SSH connection to ${TARGET_HOST}: OK"
-}
-
-
-##########################################################
-# Certificate synchronization
-##########################################################
-
-sync_certificate()
-{
-    local TARGET_HOST="$1"
-
-    echo
-    echo "======================================================"
-    echo "Synchronizing certificate to ${TARGET_HOST}"
-    echo "======================================================"
-
-    prepare_ssh_host "${TARGET_HOST}"
-
-
-    ######################################################
-    # Prepare remote directory
-    ######################################################
-
-    ssh \
-        "${SSH_OPTS[@]}" \
-        root@"${TARGET_HOST}" \
-        "
-        mkdir -p '${CERT_DIR}'
-        chown root:haproxy '${CERT_DIR}'
-        chmod 750 '${CERT_DIR}'
-        "
-
-
-    ######################################################
-    # Copy certificate
-    ######################################################
-
-    echo
-    echo "Copying certificate to ${TARGET_HOST}..."
-
-
-    scp \
-        "${SCP_OPTS[@]}" \
-        "${CERT_PEM}" \
-        root@"${TARGET_HOST}":"${CERT_PEM}"
-
-
-    ######################################################
-    # Set permissions and reload HAProxy
-    ######################################################
-
-    ssh \
-        "${SSH_OPTS[@]}" \
-        root@"${TARGET_HOST}" \
-        "
-        chown root:haproxy '${CERT_PEM}'
-        chmod 640 '${CERT_PEM}'
-
-        if [ -f /etc/haproxy/haproxy.cfg ]; then
-
-            if haproxy -c -f /etc/haproxy/haproxy.cfg; then
-
-                if systemctl is-active --quiet haproxy; then
-
-                    echo 'Reloading HAProxy on ${TARGET_HOST}...'
-
-                    systemctl reload haproxy
-
-                else
-
-                    echo 'Starting HAProxy on ${TARGET_HOST}...'
-
-                    systemctl start haproxy
-
-                fi
-
-            else
-
-                echo 'ERROR: HAProxy config validation failed on ${TARGET_HOST}'
-
-                exit 1
-
-            fi
-
-        else
-
-            echo 'HAProxy configuration does not exist on ${TARGET_HOST}.'
-            echo 'Certificate was copied successfully.'
-
-        fi
-        "
-
-
-    echo
-    echo "Certificate successfully synchronized to ${TARGET_HOST}."
-}
-
-
-##########################################################
-# Let's Encrypt
-##########################################################
-#
-# Certbot runs only on haproxy01
-#
-##########################################################
-
-if [[ "${LOCAL_IP}" == "${CERT_MANAGER_IP}" ]]; then
-
-    echo
-    echo "======================================================"
-    echo "This node is certificate manager"
-    echo "======================================================"
-
-    echo
-    echo "Certificate manager:"
-    echo
-    echo "  ${CERT_MANAGER_HOST}"
-
-
-    ######################################################
-    # DNS verification
-    ######################################################
-
-    echo
-    echo "======================================================"
-    echo "Checking public DNS"
-    echo "======================================================"
-
-    DNS_IP="$(dig +short A "${DOMAIN}" | head -n1 || true)"
-
-
-    if [[ -z "${DNS_IP}" ]]; then
-
-        echo
-        echo "ERROR:"
-        echo
-        echo "DNS A record for ${DOMAIN} does not exist."
-        echo
-        echo "Required record:"
-        echo
-        echo "  ${DOMAIN} -> ${PUBLIC_IP}"
-        echo
-
-        exit 1
-    fi
-
-
-    echo
-    echo "${DOMAIN} -> ${DNS_IP}"
-
-
-    if [[ "${DNS_IP}" != "${PUBLIC_IP}" ]]; then
-
-        echo
-        echo "ERROR:"
-        echo
-        echo "${DOMAIN} resolves to:"
-        echo
-        echo "  ${DNS_IP}"
-        echo
-        echo "Expected:"
-        echo
-        echo "  ${PUBLIC_IP}"
-        echo
-
-        exit 1
-    fi
-
-
-    ######################################################
-    # Obtain Let's Encrypt certificate
-    ######################################################
-
-    echo
-    echo "======================================================"
-    echo "Obtaining Let's Encrypt certificate"
-    echo "======================================================"
-
-    certbot certonly \
-        --standalone \
-        --http-01-port "${CERTBOT_PORT}" \
-        --preferred-challenges http \
-        --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        -d "${DOMAIN}"
-
-
-    ######################################################
-    # Build HAProxy PEM
-    ######################################################
-
-    echo
-    echo "======================================================"
-    echo "Creating HAProxy PEM"
-    echo "======================================================"
-
-    cat \
-        "${LE_LIVE}/fullchain.pem" \
-        "${LE_LIVE}/privkey.pem" \
-        > "${CERT_PEM}"
-
-
-    chown root:haproxy "${CERT_PEM}"
-
-    chmod 640 "${CERT_PEM}"
-
-
-    ######################################################
-    # Display certificate
-    ######################################################
-
-    echo
-    echo "Certificate information:"
-    echo
-
-    openssl x509 \
-        -in "${CERT_PEM}" \
-        -noout \
-        -subject \
-        -issuer \
-        -dates
-
-
-    ######################################################
-    # Validate local HAProxy
-    ######################################################
-
-    haproxy -c -f /etc/haproxy/haproxy.cfg
-
-
-    ######################################################
-    # Reload local HAProxy
-    ######################################################
-
-    systemctl reload haproxy
-
-
-    ######################################################
-    # Synchronize certificate to haproxy02
-    ######################################################
-
-    sync_certificate "${HAPROXY02_HOST}"
-
-
-    ######################################################
-    # Create Certbot deploy hook
-    ######################################################
-
-    echo
-    echo "======================================================"
-    echo "Creating Certbot deploy hook"
-    echo "======================================================"
-
-    mkdir -p \
-        /etc/letsencrypt/renewal-hooks/deploy
-
-
-    cat > /etc/letsencrypt/renewal-hooks/deploy/haproxy.sh <<EOF
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-
-DOMAIN="${DOMAIN}"
-
-CERT_DIR="${CERT_DIR}"
-CERT_PEM="${CERT_PEM}"
-
-PEER_HOST="${HAPROXY02_HOST}"
-
-
-SSH_OPTS=(
-    -o BatchMode=yes
-    -o ConnectTimeout=5
-    -o StrictHostKeyChecking=accept-new
-)
-
-
-SCP_OPTS=(
-    -o BatchMode=yes
-    -o ConnectTimeout=5
-    -o StrictHostKeyChecking=accept-new
-)
-
-
-##########################################################
-# Build HAProxy PEM
-##########################################################
-
-cat \
-    "/etc/letsencrypt/live/\${DOMAIN}/fullchain.pem" \
-    "/etc/letsencrypt/live/\${DOMAIN}/privkey.pem" \
-    > "\${CERT_PEM}"
-
-
-chown root:haproxy "\${CERT_PEM}"
-
-chmod 640 "\${CERT_PEM}"
-
-
-##########################################################
-# Validate local HAProxy
-##########################################################
-
-haproxy -c -f /etc/haproxy/haproxy.cfg
-
-
-##########################################################
-# Reload local HAProxy
-##########################################################
-
-systemctl reload haproxy
-
-
-##########################################################
-# Prepare known_hosts
-##########################################################
-
-mkdir -p /root/.ssh
-
-chmod 700 /root/.ssh
-
-touch /root/.ssh/known_hosts
-
-chmod 600 /root/.ssh/known_hosts
-
-
-##########################################################
-# Check SSH connection
-##########################################################
-
-if ! ssh \
-    "\${SSH_OPTS[@]}" \
-    root@"\${PEER_HOST}" \
-    "true"
-then
-
-    echo
-    echo "ERROR:"
-    echo "SSH connection to \${PEER_HOST} failed."
-    echo
-
-    exit 1
-fi
-
-
-##########################################################
-# Prepare remote certificate directory
-##########################################################
-
-ssh \
-    "\${SSH_OPTS[@]}" \
-    root@"\${PEER_HOST}" \
-    "
-    mkdir -p '${CERT_DIR}'
-    chown root:haproxy '${CERT_DIR}'
-    chmod 750 '${CERT_DIR}'
-    "
-
-
-##########################################################
-# Copy certificate
-##########################################################
-
-scp \
-    "\${SCP_OPTS[@]}" \
-    "\${CERT_PEM}" \
-    root@"\${PEER_HOST}":"\${CERT_PEM}"
-
-
-##########################################################
-# Validate and reload peer HAProxy
-##########################################################
-
-ssh \
-    "\${SSH_OPTS[@]}" \
-    root@"\${PEER_HOST}" \
-    "
-    chown root:haproxy '\${CERT_PEM}'
-
-    chmod 640 '\${CERT_PEM}'
-
-    haproxy -c -f /etc/haproxy/haproxy.cfg
-
-    if systemctl is-active --quiet haproxy; then
-
-        systemctl reload haproxy
-
-    else
-
-        systemctl start haproxy
-
-    fi
-    "
-
-
-echo
-echo "Let's Encrypt certificate successfully deployed:"
-echo
-echo "  haproxy01"
-echo "  \${PEER_HOST}"
-
-EOF
-
-
-    chmod 755 \
-        /etc/letsencrypt/renewal-hooks/deploy/haproxy.sh
-
-
-    ######################################################
-    # Enable Certbot timer
-    ######################################################
-
-    echo
-    echo "======================================================"
-    echo "Enabling Certbot timer"
-    echo "======================================================"
-
-    systemctl enable --now certbot.timer || true
-
-
-else
-
-    ######################################################
-    # Disable Certbot on haproxy02
-    ######################################################
-
-    echo
-    echo "======================================================"
-    echo "This node is not certificate manager"
-    echo "======================================================"
-
-    echo
-    echo "Certbot automatic renewal disabled on:"
-    echo
-    echo "  ${NODE_NAME}"
-
-    systemctl disable --now certbot.timer 2>/dev/null || true
-fi
-
-
-##########################################################
-# Final HAProxy validation
-##########################################################
-
-echo
-echo "======================================================"
-echo "Final HAProxy validation"
-echo "======================================================"
-
-haproxy -c -f /etc/haproxy/haproxy.cfg
-
-
-##########################################################
-# Final status
-##########################################################
-
-echo
-echo "======================================================"
-echo "HAProxy setup completed"
-echo "======================================================"
-
-echo
-echo "Node:"
-echo "  ${NODE_NAME}"
-
-echo
-echo "Local IP:"
-echo "  ${LOCAL_IP}"
-
-echo
-echo "Peer:"
-echo "  ${PEER_HOST} (${PEER_IP})"
-
-echo
-echo "Keepalived VIP:"
-echo "  ${HAPROXY_VIP}"
-
-echo
-echo "Public IP:"
-echo "  ${PUBLIC_IP}"
-
-echo
-echo "FQDN:"
-echo "  ${DOMAIN}"
-
-
-echo
-echo "------------------------------------------------------"
-
-echo
-echo "Zabbix:"
-echo
-echo "  https://${DOMAIN}/zabbix/"
-
-echo
-echo "Zabbix backends:"
-echo
-echo "  zbx01 ${ZABBIX_NODE1}:80"
-echo "  zbx02 ${ZABBIX_NODE2}:80"
-
-
-echo
-echo "------------------------------------------------------"
-
-echo
-echo "Grafana:"
-echo
-echo "  https://${DOMAIN}/grafana/"
-
-echo
-echo "Grafana backends:"
-echo
-echo "  grafana01 ${GRAFANA_NODE1}:3000"
-echo "  grafana02 ${GRAFANA_NODE2}:3000"
-
-
-echo
-echo "------------------------------------------------------"
-
-echo
-echo "PostgreSQL primary:"
-echo
-echo "  ${HAPROXY_VIP}:5432"
-
-echo
-echo "PostgreSQL replicas:"
-echo
-echo "  ${HAPROXY_VIP}:5433"
-
-
-echo
-echo "------------------------------------------------------"
-
-echo
-echo "HAProxy service:"
-echo
-
-systemctl status haproxy \
-    --no-pager \
-    --lines=10 || true
-
-
-echo
-echo "------------------------------------------------------"
-
-echo
-echo "Listeners:"
-echo
-
-ss -lntp | \
-    grep -E ':80|:443|:5432|:5433|:7000' || true
-
-
-echo
-echo "------------------------------------------------------"
-
-echo
-echo "Certificate:"
-echo
-
-if [[ -s "${CERT_PEM}" ]]; then
-
-    openssl x509 \
-        -in "${CERT_PEM}" \
-        -noout \
-        -subject \
-        -issuer \
-        -dates
-fi
-
-
-echo
-echo "======================================================"
-echo "Done"
-echo "======================================================"
 ```
-На этом установка и настройка haproxy завершена. Просмотрите вывод скрипта на предмет наличия ошибок выполнения.
+
+Это позволяет HAProxy запускаться и заранее создавать listener'ы для VIP даже на резервной ноде.
+
+Настройка сохраняется в:
+
+```text
+/etc/sysctl.d/99-haproxy.conf
+```
+
+---
+
+#### HTTPS и сертификат Let's Encrypt
+
+Для веб-интерфейсов используется FQDN:
+
+```text
+haproxy.gals.training
+```
+
+Публичная DNS-запись должна указывать на:
+
+```text
+185.161.66.194
+```
+
+Пример:
+
+```text
+haproxy.gals.training → 185.161.66.194
+```
+
+Публичный адрес должен быть NAT'ирован на Keepalived VIP:
+
+```text
+185.161.66.194:80
+    ↓
+192.168.0.100:80
+
+185.161.66.194:443
+    ↓
+192.168.0.100:443
+```
+
+---
+
+#### Получение сертификата
+
+Получением и автоматическим продлением сертификата занимается только:
+
+```text
+haproxy01
+```
+
+Перед запросом сертификата скрипт проверяет наличие DNS-записи и соответствие IP:
+
+```text
+haproxy.gals.training → 185.161.66.194
+```
+
+Если DNS-запись отсутствует или указывает на другой IP, выполнение останавливается.
+
+---
+
+#### HTTP-01 challenge
+
+Certbot используется в режиме:
+
+```text
+standalone
+```
+
+и локально слушает:
+
+```text
+192.168.0.2:8888
+```
+
+При этом Let's Encrypt обращается к серверу через стандартный HTTP-порт:
+
+```text
+haproxy.gals.training:80
+```
+
+HAProxy перехватывает запросы:
+
+```text
+/.well-known/acme-challenge/
+```
+
+и перенаправляет их на:
+
+```text
+haproxy01:8888
+```
+
+Схема:
+
+```text
+Let's Encrypt
+      |
+      | HTTP :80
+      v
+185.161.66.194
+      |
+      v
+192.168.0.100
+      |
+      v
+HAProxy MASTER
+      |
+      | /.well-known/acme-challenge/
+      v
+haproxy01:8888
+      |
+      v
+Certbot
+```
+
+Преимущество такого подхода заключается в том, что HAProxy не требуется останавливать во время продления сертификата.
+
+---
+
+#### Временный сертификат
+
+Для первичного запуска HAProxy скрипт автоматически создаёт временный self-signed сертификат.
+
+Он необходим потому, что HAProxy проверяет наличие SSL-сертификата уже при запуске конфигурации.
+
+После успешного получения сертификата Let's Encrypt временный сертификат заменяется на действующий.
+
+Файл HAProxy PEM:
+
+```text
+/etc/haproxy/certs/haproxy.gals.training.pem
+```
+
+Он содержит:
+
+```text
+fullchain.pem
++
+privkey.pem
+```
+
+---
+
+#### Синхронизация сертификата между HAProxy
+
+После получения или обновления сертификата на `haproxy01` он автоматически копируется на:
+
+```text
+haproxy02
+```
+
+Передача выполняется по SSH/SCP:
+
+```text
+haproxy01 → haproxy02
+```
+
+Используется существующая авторизация по SSH-ключу.
+
+Скрипт самостоятельно SSH-ключи не создаёт.
+
+---
+
+#### Работа с known_hosts
+
+Для автоматической обработки первого SSH-подключения используется:
+
+```text
+StrictHostKeyChecking=accept-new
+```
+
+Это означает:
+
+- новый SSH host key автоматически добавляется в `/root/.ssh/known_hosts`;
+- интерактивный запрос подтверждения не появляется;
+- если ключ уже известного сервера неожиданно изменился, SSH завершит соединение с ошибкой.
+
+Таким образом, скрипт может выполняться полностью автоматически без использования небезопасного `StrictHostKeyChecking=no`.
+
+---
+
+#### Автоматическое продление сертификата
+
+На `haproxy01` включается:
+
+```text
+certbot.timer
+```
+
+На `haproxy02` автоматический Certbot отключается.
+
+После успешного renewal запускается deploy hook:
+
+```text
+/etc/letsencrypt/renewal-hooks/deploy/haproxy.sh
+```
+
+Hook выполняет:
+
+```text
+1. Формирование нового HAProxy PEM
+2. Проверку конфигурации HAProxy
+3. Reload HAProxy на haproxy01
+4. Копирование сертификата на haproxy02
+5. Проверку HAProxy на haproxy02
+6. Reload HAProxy на haproxy02
+```
+
+Таким образом, на обеих HAProxy-нодах всегда используется один и тот же сертификат.
+
+---
+
+#### Балансировка Zabbix
+
+HAProxy балансирует HTTP-трафик между двумя Zabbix frontend:
+
+```text
+zbx01 — 192.168.0.10:80
+zbx02 — 192.168.0.11:80
+```
+
+Используется алгоритм:
+
+```text
+roundrobin
+```
+
+Внешний URL:
+
+```text
+https://haproxy.gals.training/zabbix/
+```
+
+Путь:
+
+```text
+/zabbix/
+```
+
+удаляется перед передачей на backend.
+
+Например:
+
+```text
+https://haproxy.gals.training/zabbix/index.php
+```
+
+преобразуется в:
+
+```text
+http://zbx01/index.php
+```
+
+или:
+
+```text
+http://zbx02/index.php
+```
+
+Для backend'ов передаются заголовки:
+
+```text
+X-Forwarded-Prefix: /zabbix
+X-Forwarded-Proto: https
+```
+
+---
+
+#### Health check Zabbix
+
+HAProxy выполняет HTTP-проверку:
+
+```text
+GET /
+```
+
+Ожидаемый код ответа:
+
+```text
+200
+```
+
+Если Zabbix frontend несколько раз подряд не проходит проверку, он временно исключается из балансировки.
+
+После восстановления сервер автоматически возвращается в пул.
+
+---
+
+#### Балансировка Grafana
+
+Используются две Grafana-ноды:
+
+```text
+grafana01 — 192.168.0.4:3000
+grafana02 — 192.168.0.5:3000
+```
+
+Алгоритм балансировки:
+
+```text
+roundrobin
+```
+
+Внешний URL:
+
+```text
+https://haproxy.gals.training/grafana/
+```
+
+Для проверки работоспособности Grafana используется:
+
+```text
+GET /api/health
+```
+
+Ожидаемый HTTP-код:
+
+```text
+200
+```
+
+При недоступности одной Grafana весь трафик автоматически направляется на оставшуюся рабочую ноду.
+
+---
+
+#### Балансировка PostgreSQL / Patroni
+
+HAProxy предоставляет два отдельных endpoint'а для PostgreSQL.
+
+##### Primary
+
+```text
+192.168.0.100:5432
+```
+
+Предназначен для подключения к текущему PostgreSQL Primary.
+
+HAProxy проверяет Patroni REST API:
+
+```text
+GET /primary
+```
+
+на порту:
+
+```text
+8008
+```
+
+Если узел является текущим Primary, Patroni возвращает успешный ответ и HAProxy направляет PostgreSQL-соединения на его PgBouncer:
+
+```text
+6432
+```
+
+Backend'ы:
+
+```text
+pg01 — 192.168.0.20:6432
+pg02 — 192.168.0.21:6432
+pg03 — 192.168.0.22:6432
+```
+
+---
+
+##### Replicas
+
+Для read-only соединений используется:
+
+```text
+192.168.0.100:5433
+```
+
+HAProxy проверяет:
+
+```text
+GET /replica
+```
+
+и балансирует подключения между доступными PostgreSQL replica.
+
+Алгоритм:
+
+```text
+roundrobin
+```
+
+---
+
+#### HAProxy Statistics
+
+Локально на каждой HAProxy-ноде включён web-интерфейс статистики:
+
+```text
+http://127.0.0.1:7000/
+```
+
+Он используется как для диагностики HAProxy, так и для health-check со стороны Keepalived.
+
+Текущая Basic Authentication:
+
+```text
+admin:admin
+```
+
+В production рекомендуется заменить пароль.
+
+---
+
+#### Проверка конфигурации HAProxy
+
+Перед применением конфигурации выполняется:
+
+```bash
+haproxy -c -f /etc/haproxy/haproxy.cfg
+```
+
+Если обнаружена синтаксическая ошибка, скрипт прекращает выполнение.
+
+Перед изменением существующего файла создаётся резервная копия:
+
+```text
+/etc/haproxy/haproxy.cfg.bak.<date-time>
+```
+
+---
+</details>
 
 ### Установка keepalived
 
