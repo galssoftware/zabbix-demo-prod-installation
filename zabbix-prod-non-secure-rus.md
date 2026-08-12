@@ -542,7 +542,8 @@ psql \
 В этом разделе описаны принципы работы скриптов-установщиков и порядок действий для установки компонентов.
 
 ### Установка HAProxy
-Выполните установку haproxy на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-haproxy.sh`](configs/setup-haproxy.sh).
+Выполните установку HAProxy на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-haproxy.sh`](configs/setup-haproxy.sh).
+
 
 <details>
 <summary>Детальное описание принципов работы скрипта</summary>
@@ -1038,606 +1039,342 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 
 </details>
 
-### Установка keepalived
+### Установка Keepalived
 
-Выполните установку keepalived на обоих нодах haproxy: haproxy01 и haproxy02
+Выполните установку Keepalived на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-keepalived.sh`](configs/setup-keepalived.sh).
+
+<details>
+<summary>Детальное описание принципов работы скрипта</summary>
+Скрипт `setup-keepalived.sh` предназначен для создания отказоустойчивой пары HAProxy-серверов.
+
+Keepalived управляет виртуальным IP:
+
+```text
+192.168.0.100
 ```
-#!/usr/bin/env bash
 
-set -euo pipefail
-
-
-##########################################################
-# General configuration
-##########################################################
-
-HAPROXY01_IP="192.168.0.2"
-HAPROXY02_IP="192.168.0.3"
-
-HAPROXY01_HOST="haproxy01"
-HAPROXY02_HOST="haproxy02"
-
-# Keepalived VIP
-VIP="192.168.0.100"
-
-# Prefix
-VIP_PREFIX="24"
-
-# VRRP Virtual Router ID
-VRID="51"
-
-# HAProxy stats
-HAPROXY_STATS_URL="http://127.0.0.1:7000/"
-HAPROXY_STATS_USER="admin"
-HAPROXY_STATS_PASSWORD="admin"
-
-
-##########################################################
-# Detect current node
-##########################################################
-
-echo
-echo "======================================================"
-echo "Detecting HAProxy node"
-echo "======================================================"
-
-if ip -4 addr show | grep -qE "\b${HAPROXY01_IP}/"; then
-
-    LOCAL_IP="${HAPROXY01_IP}"
-    LOCAL_HOST="${HAPROXY01_HOST}"
-
-    PEER_IP="${HAPROXY02_IP}"
-    PEER_HOST="${HAPROXY02_HOST}"
-
-    NODE_NAME="haproxy01"
-
-    STATE="MASTER"
-    PRIORITY="150"
-
-elif ip -4 addr show | grep -qE "\b${HAPROXY02_IP}/"; then
-
-    LOCAL_IP="${HAPROXY02_IP}"
-    LOCAL_HOST="${HAPROXY02_HOST}"
-
-    PEER_IP="${HAPROXY01_IP}"
-    PEER_HOST="${HAPROXY01_HOST}"
-
-    NODE_NAME="haproxy02"
-
-    STATE="BACKUP"
-    PRIORITY="100"
-
-else
-
-    echo
-    echo "ERROR:"
-    echo
-    echo "Current node does not have:"
-    echo
-    echo "  ${HAPROXY01_IP}"
-    echo "or"
-    echo "  ${HAPROXY02_IP}"
-    echo
-
-    exit 1
-fi
-
-
-echo
-echo "Node       : ${NODE_NAME}"
-echo "Local host : ${LOCAL_HOST}"
-echo "Local IP   : ${LOCAL_IP}"
-echo "Peer host  : ${PEER_HOST}"
-echo "Peer IP    : ${PEER_IP}"
-echo "State      : ${STATE}"
-echo "Priority   : ${PRIORITY}"
-echo "VIP        : ${VIP}"
-
-
-##########################################################
-# Detect network interface
-##########################################################
-
-echo
-echo "======================================================"
-echo "Detecting network interface"
-echo "======================================================"
-
-INTERFACE="$(
-    ip -o -4 addr show |
-    awk -v ip="${LOCAL_IP}" '
-        $4 ~ "^" ip "/" {
-            print $2
-            exit
-        }
-    '
-)"
-
-
-if [[ -z "${INTERFACE}" ]]; then
-
-    echo
-    echo "ERROR:"
-    echo
-    echo "Unable to detect network interface for:"
-    echo
-    echo "  ${LOCAL_IP}"
-    echo
-
-    exit 1
-fi
-
-
-echo
-echo "Network interface:"
-echo
-echo "  ${INTERFACE}"
-
-
-##########################################################
-# Install Keepalived
-##########################################################
-
-echo
-echo "======================================================"
-echo "Installing Keepalived"
-echo "======================================================"
-
-export DEBIAN_FRONTEND=noninteractive
-export NEEDRESTART_MODE=a
-
-
-apt-get update
-
-
-apt-get install -y \
-    -o Dpkg::Options::="--force-confdef" \
-    -o Dpkg::Options::="--force-confold" \
-    keepalived \
-    curl
-
-
-##########################################################
-# Backup existing Keepalived configuration
-##########################################################
-
-echo
-echo "======================================================"
-echo "Backing up Keepalived configuration"
-echo "======================================================"
-
-mkdir -p /etc/keepalived
-
-
-if [[ -f /etc/keepalived/keepalived.conf ]]; then
-
-    BACKUP_FILE="/etc/keepalived/keepalived.conf.bak.$(date +%F-%H%M%S)"
-
-    cp \
-        /etc/keepalived/keepalived.conf \
-        "${BACKUP_FILE}"
-
-
-    echo
-    echo "Backup created:"
-    echo
-    echo "  ${BACKUP_FILE}"
-fi
-
-
-##########################################################
-# Create HAProxy health-check script
-##########################################################
-#
-# Проверяем не только наличие процесса HAProxy,
-# но и работу stats HTTP endpoint.
-#
-##########################################################
-
-echo
-echo "======================================================"
-echo "Creating HAProxy health check"
-echo "======================================================"
-
-cat > /usr/local/bin/check-haproxy.sh <<EOF
-#!/usr/bin/env bash
-
-set -e
-
-##########################################################
-# First check systemd service
-##########################################################
-
-if ! systemctl is-active --quiet haproxy; then
-    exit 1
-fi
-
-
-##########################################################
-# Check HAProxy statistics HTTP endpoint
-##########################################################
-
-if ! curl \
-    --silent \
-    --show-error \
-    --fail \
-    --max-time 2 \
-    --user "${HAPROXY_STATS_USER}:${HAPROXY_STATS_PASSWORD}" \
-    "${HAPROXY_STATS_URL}" \
-    >/dev/null
-then
-    exit 1
-fi
-
-
-exit 0
-EOF
-
-
-chmod 755 /usr/local/bin/check-haproxy.sh
-
-
-##########################################################
-# Test HAProxy health check
-##########################################################
-
-echo
-echo "======================================================"
-echo "Testing HAProxy health check"
-echo "======================================================"
-
-if /usr/local/bin/check-haproxy.sh; then
-
-    echo
-    echo "HAProxy health check: OK"
-
-else
-
-    echo
-    echo "WARNING:"
-    echo
-    echo "HAProxy health check currently fails."
-    echo
-    echo "Keepalived will not become MASTER until HAProxy"
-    echo "is available."
-    echo
-
-fi
-
-
-##########################################################
-# Create Keepalived configuration
-##########################################################
-
-echo
-echo "======================================================"
-echo "Creating Keepalived configuration"
-echo "======================================================"
-
-cat > /etc/keepalived/keepalived.conf <<EOF
-##########################################################
-# Global configuration
-##########################################################
-
-global_defs {
-
-    router_id ${NODE_NAME}
-
-    enable_script_security
-
-    script_user root
-}
-
-
-##########################################################
-# HAProxy health check
-##########################################################
-
-vrrp_script check_haproxy {
-
-    script "/usr/local/bin/check-haproxy.sh"
-
-    interval 2
-    timeout 2
-
-    fall 3
-    rise 2
-
-    weight 0
-}
-
-
-##########################################################
-# HAProxy VRRP instance
-##########################################################
-
-vrrp_instance VI_HAPROXY {
-
-    state ${STATE}
-
-    interface ${INTERFACE}
-
-    virtual_router_id ${VRID}
-
-    priority ${PRIORITY}
-
-    advert_int 1
-
-
-    ######################################################
-    # Unicast VRRP
-    ######################################################
-
-    unicast_src_ip ${LOCAL_IP}
-
-    unicast_peer {
-        ${PEER_IP}
-    }
-
-
-    ######################################################
-    # VRRP authentication
-    ######################################################
-
-    authentication {
-        auth_type PASS
-        auth_pass GalsHA51
-    }
-
-
-    ######################################################
-    # Virtual IP
-    ######################################################
-
-    virtual_ipaddress {
-        ${VIP}/${VIP_PREFIX} dev ${INTERFACE}
-    }
-
-
-    ######################################################
-    # HAProxy tracking
-    ######################################################
-
-    track_script {
-        check_haproxy
-    }
-}
-EOF
-
-
-chmod 600 /etc/keepalived/keepalived.conf
-
-
-##########################################################
-# Show generated configuration
-##########################################################
-
-echo
-echo "======================================================"
-echo "Generated Keepalived configuration"
-echo "======================================================"
-
-cat /etc/keepalived/keepalived.conf
-
-
-##########################################################
-# Validate Keepalived configuration
-##########################################################
-
-echo
-echo "======================================================"
-echo "Validating Keepalived configuration"
-echo "======================================================"
-
-KEEPALIVED_HELP="$(keepalived --help 2>&1 || true)"
-
-
-if echo "${KEEPALIVED_HELP}" | grep -q -- "--config-test"; then
-
-    echo
-    echo "Using:"
-    echo
-    echo "  keepalived --config-test"
-    echo
-
-    if ! keepalived --config-test; then
-
-        echo
-        echo "ERROR:"
-        echo
-        echo "Keepalived configuration validation failed."
-        echo
-
-        exit 1
-    fi
-
-
-elif echo "${KEEPALIVED_HELP}" | grep -qE '(^|[[:space:],])-t([[:space:],]|$)'; then
-
-    echo
-    echo "Using:"
-    echo
-    echo "  keepalived -t"
-    echo
-
-    if ! keepalived -t; then
-
-        echo
-        echo "ERROR:"
-        echo
-        echo "Keepalived configuration validation failed."
-        echo
-
-        exit 1
-    fi
-
-
-else
-
-    echo
-    echo "WARNING:"
-    echo
-    echo "This Keepalived version does not expose"
-    echo "--config-test or -t."
-    echo
-    echo "Configuration will be validated during service start."
-    echo
-
-fi
-
-
-##########################################################
-# Enable Keepalived
-##########################################################
-
-echo
-echo "======================================================"
-echo "Enabling Keepalived"
-echo "======================================================"
-
-systemctl enable keepalived
-
-
-##########################################################
-# Restart Keepalived
-##########################################################
-
-echo
-echo "======================================================"
-echo "Starting Keepalived"
-echo "======================================================"
-
-systemctl restart keepalived
-
-
-##########################################################
-# Verify service
-##########################################################
-
-sleep 2
-
-
-if ! systemctl is-active --quiet keepalived; then
-
-    echo
-    echo "======================================================"
-    echo "ERROR: Keepalived failed to start"
-    echo "======================================================"
-
-    echo
-    echo "Keepalived logs:"
-    echo
-
-    journalctl \
-        -u keepalived \
-        -n 100 \
-        --no-pager
-
-    exit 1
-fi
-
-
-##########################################################
-# Final status
-##########################################################
-
-echo
-echo "======================================================"
-echo "Keepalived setup completed"
-echo "======================================================"
-
-echo
-echo "Node:"
-echo
-echo "  ${NODE_NAME}"
-
-echo
-echo "State:"
-echo
-echo "  ${STATE}"
-
-echo
-echo "Priority:"
-echo
-echo "  ${PRIORITY}"
-
-echo
-echo "Local IP:"
-echo
-echo "  ${LOCAL_IP}"
-
-echo
-echo "Peer:"
-echo
-echo "  ${PEER_HOST} (${PEER_IP})"
-
-echo
-echo "Interface:"
-echo
-echo "  ${INTERFACE}"
-
-echo
-echo "VIP:"
-echo
-echo "  ${VIP}/${VIP_PREFIX}"
-
-
-echo
-echo "------------------------------------------------------"
-echo "Keepalived service"
-echo "------------------------------------------------------"
-echo
-
-systemctl status keepalived \
-    --no-pager \
-    --lines=20 || true
-
-
-echo
-echo "------------------------------------------------------"
-echo "HAProxy health check"
-echo "------------------------------------------------------"
-echo
-
-if /usr/local/bin/check-haproxy.sh; then
-
-    echo "HAProxy: HEALTHY"
-
-else
-
-    echo "HAProxy: UNHEALTHY"
-
-fi
-
-
-echo
-echo "------------------------------------------------------"
-echo "VIP on this node"
-echo "------------------------------------------------------"
-echo
-
-ip -4 addr show "${INTERFACE}" |
-    grep "${VIP}" || true
-
-
-echo
-echo "------------------------------------------------------"
-echo "Keepalived logs"
-echo "------------------------------------------------------"
-echo
-
-journalctl \
-    -u keepalived \
-    -n 30 \
-    --no-pager
-
-
-echo
-echo "======================================================"
-echo "Done"
-echo "======================================================"
+VIP в каждый момент времени принадлежит только одному из двух серверов.
+
+Основная схема:
+
+```text
+                192.168.0.100
+                      VIP
+                       |
+              +--------+--------+
+              |                 |
+         haproxy01          haproxy02
+         192.168.0.2        192.168.0.3
+         priority 150       priority 100
+              |
+            MASTER
 ```
-На этом установка и настройка keepalived завершена. Проверьте вывод скрипта на предмет наличия ошибок.
+
+В нормальном состоянии владельцем VIP является:
+
+```text
+haproxy01
+```
+
+При его отказе VIP автоматически переходит на:
+
+```text
+haproxy02
+```
+
+---
+
+# 10. Автоматическое определение ноды
+
+Один и тот же Keepalived-скрипт запускается на обеих нодах.
+
+На `haproxy01` автоматически устанавливаются:
+
+```text
+state MASTER
+priority 150
+peer 192.168.0.3
+```
+
+На `haproxy02`:
+
+```text
+state BACKUP
+priority 100
+peer 192.168.0.2
+```
+
+Сетевой интерфейс также определяется автоматически по IP текущего сервера.
+
+Например:
+
+```text
+192.168.0.2 → ens18
+```
+
+---
+
+# 11. VRRP
+
+Для передачи состояния между HAProxy-серверами используется VRRP.
+
+Конфигурация работает в режиме:
+
+```text
+unicast
+```
+
+То есть вместо multicast ноды напрямую обмениваются VRRP-сообщениями:
+
+```text
+192.168.0.2 ↔ 192.168.0.3
+```
+
+Настройка включает:
+
+```text
+unicast_src_ip
+unicast_peer
+```
+
+Такой режим удобен в виртуальных и облачных сетях, где multicast может быть недоступен или нежелателен.
+
+---
+
+# 12. VRRP priority
+
+Используются следующие значения:
+
+```text
+haproxy01 = 150
+haproxy02 = 100
+```
+
+Поэтому при нормальной работе предпочтительным MASTER является:
+
+```text
+haproxy01
+```
+
+После восстановления `haproxy01` он снова имеет более высокий priority и может вернуть VIP себе.
+
+---
+
+# 13. Health check HAProxy
+
+Keepalived не только проверяет существование процесса HAProxy, но и проверяет его реальную HTTP-доступность.
+
+Создаётся скрипт:
+
+```text
+/usr/local/bin/check-haproxy.sh
+```
+
+Сначала выполняется проверка:
+
+```bash
+systemctl is-active haproxy
+```
+
+После этого проверяется HAProxy Statistics endpoint:
+
+```text
+http://127.0.0.1:7000/
+```
+
+с Basic Authentication.
+
+Таким образом, ситуация, когда процесс HAProxy существует, но сам сервис фактически не отвечает, также считается отказом.
+
+---
+
+# 14. Параметры проверки HAProxy
+
+Keepalived выполняет health check каждые:
+
+```text
+2 секунды
+```
+
+Используются:
+
+```text
+fall 3
+rise 2
+```
+
+Это означает:
+
+```text
+3 последовательные ошибки
+→ HAProxy считается неисправным
+
+2 последовательные успешные проверки
+→ HAProxy снова считается рабочим
+```
+
+---
+
+# 15. Переключение VIP при отказе
+
+Если HAProxy на текущем MASTER перестаёт проходить health check, Keepalived переводит соответствующий VRRP instance в аварийное состояние.
+
+VIP:
+
+```text
+192.168.0.100
+```
+
+переходит на второй сервер.
+
+Например:
+
+```text
+До отказа:
+
+192.168.0.100
+      |
+      v
+haproxy01
+
+
+После отказа haproxy01:
+
+192.168.0.100
+      |
+      v
+haproxy02
+```
+
+Для клиентов адрес подключения при этом не меняется.
+
+---
+
+# 16. Восстановление после отказа
+
+После восстановления HAProxy:
+
+```bash
+systemctl start haproxy
+```
+
+health check снова начинает проходить.
+
+Так как `haproxy01` имеет более высокий priority:
+
+```text
+150 > 100
+```
+
+VIP может вернуться обратно на `haproxy01`.
+
+---
+
+# 17. Проверка конфигурации Keepalived
+
+Скрипт определяет, какой вариант проверки синтаксиса поддерживается установленной версией Keepalived.
+
+В первую очередь используется:
+
+```bash
+keepalived --config-test
+```
+
+Если эта команда недоступна, проверяется возможность использования:
+
+```bash
+keepalived -t
+```
+
+Если отдельная функция проверки отсутствует, конфигурация валидируется непосредственно при запуске службы.
+
+Стандартный конфигурационный файл:
+
+```text
+/etc/keepalived/keepalived.conf
+```
+
+---
+
+# 18. Резервное копирование конфигурации Keepalived
+
+Перед изменением существующего файла создаётся копия:
+
+```text
+/etc/keepalived/keepalived.conf.bak.<date-time>
+```
+
+Это позволяет быстро восстановить предыдущую конфигурацию.
+
+---
+
+# 19. Итоговая схема отказоустойчивости
+
+После настройки обоих скриптов инфраструктура выглядит следующим образом:
+
+```text
+                         Internet
+                            |
+                            v
+                    185.161.66.194
+                            |
+                           NAT
+                            |
+                            v
+                    192.168.0.100
+                      Keepalived VIP
+                            |
+                 +----------+----------+
+                 |                     |
+                 v                     v
+             haproxy01             haproxy02
+             192.168.0.2           192.168.0.3
+             priority 150          priority 100
+                 |
+              HAProxy
+                 |
+      +----------+----------+-------------+
+      |                     |             |
+      v                     v             v
+   Zabbix                 Grafana      PostgreSQL
+   zbx01                  grafana01      Patroni
+   zbx02                  grafana02
+```
+
+---
+
+# 20. Роли компонентов
+
+Ответственность между компонентами разделена следующим образом:
+
+```text
+Keepalived
+    |
+    +-- управление VIP
+    +-- выбор активного HAProxy
+    +-- контроль состояния HAProxy
+    +-- automatic failover
+
+HAProxy
+    |
+    +-- TLS termination
+    +-- Let's Encrypt HTTP-01 routing
+    +-- HTTP routing
+    +-- балансировка Zabbix
+    +-- балансировка Grafana
+    +-- определение PostgreSQL Primary
+    +-- балансировка PostgreSQL Replica
+
+Certbot
+    |
+    +-- выпуск TLS-сертификата
+    +-- автоматическое продление
+    +-- deploy hook
+    +-- синхронизация сертификата между HAProxy
+```
+
+В результате отказ одной HAProxy-ноды не приводит к изменению адресов подключения клиентов и не требует ручного переключения трафика.
+</details>
 
 ### Установка Zabbix Server, Zabbix Frontend
 
