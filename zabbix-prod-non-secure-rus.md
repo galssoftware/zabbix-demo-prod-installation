@@ -25,7 +25,7 @@
 
 ## Как будет выглядеть архитектура
 Так будет выглядеть итоговая архитектура демо-инсталляции.
-![Architecture Diagram](images/demo-install.svg)
+![Architecture Diagram](images/demo-installation.svg)
 
 В инфраструктуре используются два сервера HAProxy и Keepalived для обеспечения высокой доступности сервисов.
 
