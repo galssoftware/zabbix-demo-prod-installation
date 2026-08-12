@@ -1392,7 +1392,7 @@ patronictl -c /etc/patroni/config.yml list
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "haproxy" \
+  -h "cluster" \
   -p 5432 \
   -U zabbix_srv \
   -d zabbix_server \
