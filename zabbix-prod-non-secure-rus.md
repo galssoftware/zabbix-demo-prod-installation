@@ -1415,7 +1415,7 @@ PGPASSWORD='2tdxZ898D9MR' \
 psql \
   -h "cluster" \
   -U zabbix_srv \
-  -d zabbix_server \
+  -d zabbix_server
 
 \dt
 ```
@@ -1426,7 +1426,7 @@ psql \
   -h cluster \
   -d zabbix_server \
   -v ON_ERROR_STOP=1 \
-  -U postgres \
+  -U zabbix_srv \
   -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
 ```
 
