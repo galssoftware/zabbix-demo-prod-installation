@@ -1416,7 +1416,8 @@ psql \
   -h "cluster" \
   -U zabbix_srv \
   -d zabbix_server \
-  -c "\dt"
+
+\dt
 ```
 Создайте расширение TimescaleDB на Leader:
 ```
