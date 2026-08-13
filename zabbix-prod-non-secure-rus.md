@@ -1494,21 +1494,26 @@ GRANT SELECT ON TABLE trends_uint TO grafana_zabbix;
 ```
 Настройте конфигурацию Zabbix сервер на обоих нодах
 ```
-nano /etc/zabbix/zabbix_server.conf
+cat << EOF >> /etc/zabbix/zabbix_server.conf
 DBHost=cluster
 DBName=zabbix_server
 DBUser=zabbix_srv
 DBPassword=2tdxZ898D9MR
+EOF
 ```
 На ноде zbx01 дополнительно настройте
 ```
+cat << EOF >> /etc/zabbix/zabbix_server.conf
 HANodeName=zbx01
 NodeAddress=192.168.0.10:10051
+EOF
 ```
 На ноде zbx02 дополнительно настройте
 ```
+cat << EOF >> /etc/zabbix/zabbix_server.conf
 HANodeName=zbx02
 NodeAddress=192.168.0.11:10051
+EOF
 ```
 
 #### Настройка Nginx
@@ -1524,7 +1529,7 @@ grep -R "listen .*80" \
 ```
 rm -f /etc/nginx/sites-enabled/default
 ```
-Отредактируйте конфигурацию Zabbix (раскомментируйте строки)
+Отредактируйте конфигурацию Zabbix
 ```
 nano /etc/nginx/conf.d/zabbix.conf
     listen          80;
