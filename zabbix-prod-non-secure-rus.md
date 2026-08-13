@@ -1403,7 +1403,7 @@ psql \
 zcat /usr/share/zabbix/sql-scripts/postgresql/server.sql.gz \
 | PGPASSWORD='2tdxZ898D9MR' \
   psql \
-    -h "haproxy" \
+    -h "cluster" \
     -p 5432 \
     -U zabbix_srv \
     -d zabbix_server \
@@ -1413,7 +1413,7 @@ zcat /usr/share/zabbix/sql-scripts/postgresql/server.sql.gz \
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "haproxy" \
+  -h "cluster" \
   -U zabbix_srv \
   -d zabbix_server \
   -c "\dt"
@@ -1422,7 +1422,7 @@ psql \
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h haproxy \
+  -h cluster \
   -d zabbix_server \
   -v ON_ERROR_STOP=1 \
   -U postgres \
@@ -1433,7 +1433,7 @@ psql \
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "haproxy" \
+  -h "cluster" \
   -p 5432 \
   -U zabbix_srv \
   -d zabbix_server \
@@ -1444,7 +1444,7 @@ psql \
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "haproxy" \
+  -h "cluster" \
   -U zabbix_srv \
   -d zabbix_server \
   -c "
@@ -1459,7 +1459,7 @@ ORDER BY hypertable_name;
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "haproxy" \
+  -h "cluster" \
   -U postgres \
   -d zabbix_server
 GRANT CONNECT ON DATABASE zabbix_server TO zabbix_web;
@@ -1473,7 +1473,7 @@ GRANT ALL ON ALL PROCEDURES IN SCHEMA public TO zabbix_web;
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "haproxy" \
+  -h "cluster" \
   -U postgres \
   -d zabbix_server
 GRANT CONNECT ON DATABASE zabbix_server TO grafana_zabbix;
@@ -1489,7 +1489,7 @@ GRANT SELECT ON TABLE trends_uint TO grafana_zabbix;
 Настройте конфигурацию Zabbix сервер на обоих нодах
 ```
 nano /etc/zabbix/zabbix_server.conf
-DBHost=haproxy
+DBHost=cluster
 DBName=zabbix_server
 DBUser=zabbix_srv
 DBPassword=2tdxZ898D9MR
