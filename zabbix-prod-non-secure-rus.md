@@ -1466,6 +1466,7 @@ psql \
   -h "cluster" \
   -U postgres \
   -d zabbix_server
+
 GRANT CONNECT ON DATABASE zabbix_server TO zabbix_web;
 GRANT USAGE ON SCHEMA public TO zabbix_web;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO zabbix_web;
@@ -1480,6 +1481,7 @@ psql \
   -h "cluster" \
   -U postgres \
   -d zabbix_server
+
 GRANT CONNECT ON DATABASE zabbix_server TO grafana_zabbix;
 GRANT USAGE ON SCHEMA public TO grafana_zabbix;
 GRANT SELECT ON TABLE history TO grafana_zabbix;
