@@ -1515,7 +1515,10 @@ HANodeName=zbx02
 NodeAddress=192.168.0.11:10051
 EOF
 ```
-
+Добавьте в загрузку сервисы и запустите их
+```
+systemctl enable php8.3-fpm nginx zabbix-server zabbix-agent2 --now
+```
 #### Настройка Nginx
 На нодах zbx01 и zbx02 проверьте настройки Nginx на предмет сайтов по умолчанию
 ```
