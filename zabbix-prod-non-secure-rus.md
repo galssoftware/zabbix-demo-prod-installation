@@ -1598,11 +1598,16 @@ systemctl status grafana-server
 Перейдите в раздел Administration → Plugins and data → Plugins, найдите и включите плагин Zabbix
 ![zabbix-plugin-enable](images/zabbix-plugin-enable.png)
 
+zabbix-plugin-enable.png Перейдите в раздел Connections → Datasources и добавьте новый источник данных типа Zabbix.
+![grafana-postgres-datasource](images/zabbix-postgresql-datasource.png)
 
-Настройте источник данных PostgreSQL (БД Zabbix)
+Далее настройте плагин. Укажите реквизиты подключения к Zabbix
+![zabbix-plugin-settings-zabbix](images/zabbix-plugin-settings-zabbix.png)
+
+Дополнительно настройте Direct DB Connection
+![zabbix-plugin-settings-database](images/zabbix-plugin-settings-database.png)
 
 
-Настройте источник данных Zabbix
 
 
 
