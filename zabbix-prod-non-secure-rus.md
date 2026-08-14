@@ -1546,12 +1546,15 @@ nano /etc/nginx/conf.d/zabbix.conf
 В результате этой настройки вы получите созданный конфигурационный файл /usr/share/zabbix/ui/conf/zabbix.conf.php, который нужно скопировать на другую ноду Zabbix.
 
 ### Установка Grafana 
+Все описанные действия необходимо выполнить на серверах Grafana: grafana01, grafana02
 
-Подготовьте сервер:
+Подготовьте серверы
 ```
 apt update
 apt upgrade -y
 apt install -y \
+  -o Dpkg::Options::="--force-confdef" \
+  -o Dpkg::Options::="--force-confold" \
   apt-transport-https \
   ca-certificates \
   wget \
@@ -1566,7 +1569,7 @@ systemctl daemon-reload
 systemctl enable grafana-server
 grafana cli plugins install alexanderzobnin-zabbix-app
 ```
-Настройте Grafana
+Настройте Grafana. Выполните на обоих се
 ```
 nano /etc/grafana/grafana.ini
 [server]
