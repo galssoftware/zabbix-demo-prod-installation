@@ -1581,13 +1581,20 @@ host = cluster:5432
 name = grafana
 user = grafana
 password = 2tdxZ898D9MR
-
-
 ```
 Добавьте в автозагрузку и запустите Grafana
 ```
 systemctl enable grafana-server --now
 ```
+Убедитесь, что на обоих серверах Grafana запустилась:
+```
+systemctl status grafana-server
+```
+Теперь можно залогиниться в интерфейс Grafana. Перейдите по URL https://haproxy.gals.training/grafana и введите учетные данные по умолчанию admin/admin. При первом входе система предложит их заменить.
+
+Перейдите в раздел Connections -> Datasources и добавьте новый источник данных типа PostgreSQL. Обратите внимание, что порт подключения здесь указан 5433, что означает подключение к репликам БД.
+![grafana-postgres-datasource](images/zabbix-postgresql-datasource.png)
+
 
 Включите плагин Zabbix
 
