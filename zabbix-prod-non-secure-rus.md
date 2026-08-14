@@ -1519,6 +1519,8 @@ EOF
 ```
 systemctl enable php8.3-fpm nginx zabbix-server zabbix-agent2 --now
 ```
+
+
 #### Настройка Nginx
 На нодах zbx01 и zbx02 проверьте настройки Nginx на предмет сайтов по умолчанию
 ```
@@ -1538,6 +1540,10 @@ nano /etc/nginx/conf.d/zabbix.conf
     listen          80;
     server_name     _;
 ```
+#### Настройка Zabbix Frontend
+Выполните первичную конфигурацию веб-интерфейса, открыв веб-интерфейс Zabbix непосредственно на одной из нод
+![Architecture Diagram](images/zabbix_setup.png)
+
 
 ### Установка Grafana 
 
