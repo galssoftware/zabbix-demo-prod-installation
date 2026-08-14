@@ -432,13 +432,13 @@ patronictl -c /etc/patroni/config.yml list
 ```
 На этом установка Patroni завершена.
 ### Установка TimescaleDB
-Добавьте репозиторий TimescaleDB (выполните на 3 серверах БД: pg01, pg02, pg03)
+Добавьте репозиторий TimescaleDB (выполните на 3 серверах БД: pg01, pg02, pg03) и установите расширение. 
 ```
 curl -fsSL https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/timescaledb-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/timescaledb-archive-keyring.gpg] \
 https://packagecloud.io/timescale/timescaledb/ubuntu/ noble main" | sudo tee /etc/apt/sources.list.d/timescaledb.list
 apt update
-apt install -y timescaledb-2-postgresql-18
+apt install -y timescaledb-2-postgresql-18=2.28.3~ubuntu24.04-1804
 ```
 Так как управление кластером происходит через Patroni, необходимо подключить расширение TimescaleDB. Отредактируйте конфигурацию Patroni и добавьте расширение TimescaleDB
 ```
@@ -1515,9 +1515,9 @@ HANodeName=zbx02
 NodeAddress=192.168.0.11:10051
 EOF
 ```
-Добавьте в загрузку сервисы Zabbix и запустите их
+Добавьте в загрузку сервисы и запустите их
 ```
-systemctl enable zabbix-server zabbix-agent2 --now
+systemctl enable zabbix-server zabbix-agent2 php8.3-fpm nginx --now
 ```
 
 
@@ -1540,9 +1540,9 @@ nano /etc/nginx/conf.d/zabbix.conf
     listen          80;
     server_name     _;
 ```
-Добавьте в автозагрузку сервисы php8.3-fpm nginx и запустите их
+Перезагрузите сервисы php8.3-fpm и nginx
 ```
-systemctl enable php8.3-fpm nginx --now
+systemctl restart php8.3-fpm nginx
 ```
 #### Настройка Zabbix Frontend
 Выполните первичную конфигурацию веб-интерфейса, открыв веб-интерфейс Zabbix непосредственно на одной из нод. С кластерного адреса данная настройка недоступна.
