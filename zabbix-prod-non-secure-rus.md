@@ -1515,9 +1515,9 @@ HANodeName=zbx02
 NodeAddress=192.168.0.11:10051
 EOF
 ```
-Добавьте в загрузку сервисы и запустите их
+Добавьте в загрузку сервисы Zabbix и запустите их
 ```
-systemctl enable php8.3-fpm nginx zabbix-server zabbix-agent2 --now
+systemctl enable zabbix-server zabbix-agent2 --now
 ```
 
 
@@ -1539,6 +1539,10 @@ rm -f /etc/nginx/sites-enabled/default
 nano /etc/nginx/conf.d/zabbix.conf
     listen          80;
     server_name     _;
+```
+Добавьте в автозагрузку сервисы php8.3-fpm nginx и запустите их
+```
+systemctl enable php8.3-fpm nginx --now
 ```
 #### Настройка Zabbix Frontend
 Выполните первичную конфигурацию веб-интерфейса, открыв веб-интерфейс Zabbix непосредственно на одной из нод. С кластерного адреса данная настройка недоступна.
@@ -1607,6 +1611,10 @@ zabbix-plugin-enable.png Перейдите в раздел Connections → Data
 Дополнительно настройте Direct DB Connection
 ![zabbix-plugin-settings-database](images/zabbix-plugin-settings-database.png)
 
+Для проверки подключения перейдите в раздел Explore и настройте отображение произвольной метрики
+![grafana-explore](images/grafana-explore.png)
+
+На этом настройка отказоусточивой конфигурации завершена. Для проверки отказоустойчивости, вы можете выполнить поочередное отключение задублированных серверов.
 
 
 
