@@ -1573,20 +1573,20 @@ grafana cli plugins install alexanderzobnin-zabbix-app
 ```
 nano /etc/grafana/grafana.ini
 [server]
-root_url = https://haproxy.gals.training/grafana/
+root_url = https://haproxy.gals.training/grafana
 serve_from_sub_path = true
 [database]
 type = postgres
-host = haproxy:5432
+host = cluster:5432
 name = grafana
 user = grafana
 password = 2tdxZ898D9MR
 
 
 ```
-Запустите Grafana
+Добавьте в автозагрузку и запустите Grafana
 ```
-systemctl start grafana-server
+systemctl enable grafana-server --now
 ```
 
 Включите плагин Zabbix
