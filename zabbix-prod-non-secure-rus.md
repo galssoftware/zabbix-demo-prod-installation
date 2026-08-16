@@ -37,7 +37,7 @@ haproxy02   192.168.0.3
 
 VIP         192.168.0.100
 
-Public IP   185.161.66.194
+Public IP   185.185.185.185
 FQDN        haproxy.gals.training
 ```
 
@@ -1302,7 +1302,7 @@ keepalived -t
                          Internet
                             |
                             v
-                    185.161.66.194
+                    185.185.185.185
                             |
                            NAT
                             |
