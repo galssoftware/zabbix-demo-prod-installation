@@ -491,8 +491,9 @@ CREATE DATABASE zabbix_server OWNER zabbix_srv;
 CREATE DATABASE grafana OWNER 'grafana';
 ```
 Получиnt SCRAM-секреты пользователей (понадобятся для работы PGBouncer)
+```
 SELECT rolname || '|' || rolpassword FROM pg_authid WHERE rolname IN ('postgres', 'zabbix_srv', 'zabbix_web', 'grafana', 'grafana_zabbix');
-
+```
 Добавьте записи в конфигурационный файл /etc/pgbouncer/userlist.txt (выполните на 3 серверах БД: pg01, pg02, pg03). В вашем случае хэши паролей будут отличаться.
 ```
 nano /etc/pgbouncer/userlist.txt
@@ -1562,8 +1563,15 @@ apt install -y \
   apt-transport-https \
   ca-certificates \
   wget \
+  postgresql-common \
   gnupg
 ```
+Дополнительно установите клиент Postgres, который понадобится для тестирования подключения к БД
+```
+/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+apt install -y postgresql-client-18
+```
+
 Добавьте репозиторий, добавьте Grafana в автозагрузку и установите плагин Zabbix
 ```
 apt-get install -y adduser libfontconfig1 musl
