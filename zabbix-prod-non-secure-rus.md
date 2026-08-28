@@ -490,7 +490,7 @@ CREATE ROLE grafana LOGIN PASSWORD '2tdxZ898D9MR';
 CREATE DATABASE zabbix_server OWNER zabbix_srv;
 CREATE DATABASE grafana OWNER 'grafana';
 ```
-Получиnt SCRAM-секреты пользователей (понадобятся для работы PGBouncer)
+Получите SCRAM-секреты пользователей (понадобятся для работы PGBouncer)
 ```
 SELECT rolname || '|' || rolpassword FROM pg_authid WHERE rolname IN ('postgres', 'zabbix_srv', 'zabbix_web', 'grafana', 'grafana_zabbix');
 ```
