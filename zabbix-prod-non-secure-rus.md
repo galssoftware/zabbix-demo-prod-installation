@@ -170,7 +170,7 @@ etcdctl endpoint health --cluster=true
 
 Для Ubuntu 24.04 LTS наиболее правильный способ установки PostgreSQL 18.4 — использовать официальный репозиторий PostgreSQL Global Development Group (PGDG). Он содержит актуальные версии PostgreSQL.
 
-Установитн нужные пакеты
+Установите нужные пакеты
 ```
 apt install -y curl ca-certificates postgresql-common
 ```
