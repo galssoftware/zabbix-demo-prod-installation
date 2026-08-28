@@ -510,11 +510,12 @@ chmod 600 /etc/pgbouncer/userlist.txt
 ```
 
 Модифицируйте файл /etc/pgbouncer/pgbouncer.ini (выполните на 3 серверах БД: pg01, pg02, pg03), добавив/изменив значения в соответствующих секциях
+Конфигурация на сервере pg01
 ```
 nano /etc/pgbouncer/pgbouncer.ini
 [databases]
-zabbix_server = host=127.0.0.1 port=5432 dbname=zabbix_server
-grafana = host=127.0.0.1 port=5432 dbname=grafana pool_mode=session
+zabbix_server = host=192.168.0.20 port=5432 dbname=zabbix_server
+grafana = host=192.168.0.20 port=5432 dbname=grafana pool_mode=session
 [pgbouncer]
 listen_addr = 0.0.0.0
 auth_type = scram-sha-256
@@ -522,7 +523,33 @@ pool_mode = transaction
 max_client_conn = 500
 default_pool_size = 100
 ```
- 
+Конфигурация на сервере pg02
+```
+nano /etc/pgbouncer/pgbouncer.ini
+[databases]
+zabbix_server = host=192.168.0.21 port=5432 dbname=zabbix_server
+grafana = host=192.168.0.21 port=5432 dbname=grafana pool_mode=session
+[pgbouncer]
+listen_addr = 0.0.0.0
+auth_type = scram-sha-256
+pool_mode = transaction
+max_client_conn = 500
+default_pool_size = 100
+```
+Конфигурация на сервере pg03
+```
+nano /etc/pgbouncer/pgbouncer.ini
+[databases]
+zabbix_server = host=192.168.0.22 port=5432 dbname=zabbix_server
+grafana = host=192.168.0.22 port=5432 dbname=grafana pool_mode=session
+[pgbouncer]
+listen_addr = 0.0.0.0
+auth_type = scram-sha-256
+pool_mode = transaction
+max_client_conn = 500
+default_pool_size = 100
+```
+
 Перезагрузите PGBouncer (выполните на 3 серверах БД: pg01, pg02, pg03)
 ```
 systemctl restart pgbouncer
