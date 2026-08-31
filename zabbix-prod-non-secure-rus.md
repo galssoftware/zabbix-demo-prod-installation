@@ -443,7 +443,7 @@ curl -fsSL https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dea
 echo "deb [signed-by=/usr/share/keyrings/timescaledb-archive-keyring.gpg] \
 https://packagecloud.io/timescale/timescaledb/ubuntu/ noble main" | sudo tee /etc/apt/sources.list.d/timescaledb.list
 apt update
-apt install -y timescaledb-2-postgresql-18=2.28.3~ubuntu24.04-1804
+apt install -y timescaledb-2-postgresql-18=2.28.3~ubuntu24.04-1804 timescaledb-2-loader-postgresql-18=2.28.3~ubuntu24.04-1804
 ```
 Так как управление кластером происходит через Patroni, необходимо подключить расширение TimescaleDB. Отредактируйте конфигурацию Patroni и добавьте расширение TimescaleDB
 ```
@@ -1393,6 +1393,8 @@ Certbot
 В результате отказ одной HAProxy-ноды не приводит к изменению адресов подключения клиентов и не требует ручного переключения трафика.
 </details>
 
+Теперь вы можете подключаться к вашему окружению через VIP 192.168.0.100.
+
 ### Установка Zabbix Server, Zabbix Frontend
 
 Установите клиент PostgreSQL и утилиту curl на обоих серверах Zabbix (zbx01, zbx02). Они нам пригодятся при дальнейшем тестировании подключения.
@@ -1422,11 +1424,11 @@ apt install -y \
 ```
 patronictl -c /etc/patroni/config.yml list
 ```
-Проверьте прямое подключение к БД через haproxy с обоих Zabbix-серверов
+Допустим, лидером является сервер pg01. Проверьте прямое подключение к БД через haproxy с обоих Zabbix-серверов
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
-  -h "cluster" \
+  -h "pg01" \
   -p 5432 \
   -U zabbix_srv \
   -d zabbix_server \
@@ -1437,7 +1439,7 @@ psql \
 zcat /usr/share/zabbix/sql-scripts/postgresql/server.sql.gz \
 | PGPASSWORD='2tdxZ898D9MR' \
   psql \
-    -h "cluster" \
+    -h "pg01" \
     -p 5432 \
     -U zabbix_srv \
     -d zabbix_server \
@@ -1466,7 +1468,7 @@ psql \
   -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
 ```
 
-Настройте Zabbix на использование гипертаблиц. Скрипт timescaledb/schema.sql создает hypertable и настраивает параметры housekeeping и сжатия. Предупреждения TimescaleDB 2.9+ о несоблюдении некоторых best practices при выполнении этого скрипта можно игнорировать — Zabbix указывает, что настройка при этом завершается успешно.
+Настройте Zabbix на использование гипертаблиц. Скрипт timescaledb/schema.sql создает hypertable и настраивает параметры housekeeping и сжатия. Предупреждения TimescaleDB 2.8+ о несоблюдении некоторых best practices при выполнении этого скрипта можно игнорировать — Zabbix указывает, что настройка при этом завершается успешно.
 ```
 PGPASSWORD='2tdxZ898D9MR' \
 psql \
