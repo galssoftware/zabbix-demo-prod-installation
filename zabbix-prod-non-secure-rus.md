@@ -128,7 +128,7 @@ EOF
 На ноде pg02
 ```
 cat << EOF >> /etc/default/etcd
-TCD_NAME="pg02"
+ETCD_NAME="pg02"
 ETCD_DATA_DIR="/var/lib/etcd"
 ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.0.21:2380"
 ETCD_LISTEN_PEER_URLS="http://192.168.0.21:2380"
@@ -153,9 +153,14 @@ ETCD_INITIAL_CLUSTER_TOKEN="zabbix-etcd-cluster"
 ETCD_INITIAL_CLUSTER_STATE="new"
 EOF
 ```
-На каждой ноде добавьте etcd в автозагрузку и запустите его
+Очистите конфигурацию etcd, созданную по умолчанию
 ```
-systemctl enable --now etcd
+rm -rf /var/lib/etcd/default
+```
+На каждой ноде добавьте etcd в автозагрузку и перезапустите его
+```
+systemctl enable etcd
+systemctl restart etcd
 ```
 Проверьте текущий статус etcd
 ```
