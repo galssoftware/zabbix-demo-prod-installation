@@ -15,7 +15,7 @@
 | Patroni 4.1.3 | Оркестрация PostgreSQL |
 | ETCD 3.4.30 | Распределенное хранилище состояния кластера|
 |PGBouncer 1.25.2|Пулер соединений для PostgreSQL|
-| Zabbix 7.4.13    | Мониторинг         |
+| Zabbix 7.4.14    | Мониторинг         |
 |Nginx 1.24.0| Веб-сервер|
 |PHP-FPM 8.3.6| Менеджер процессов PHP|
 | HAProxy 2.8.16 | Балансировщик нагрузки     |
@@ -45,8 +45,8 @@ Keepalived обеспечивает автоматическое переклю�
 
 В конфигурации используются два отдельных скрипта:
 
-- [`setup-haproxy.sh`](configs/setup-haproxy.sh) — установка и настройка HAProxy;
-- [`setup-keepalived.sh`](configs/setup-keepalived.sh) — установка и настройка Keepalived.
+- [`setup-haproxy.sh`](scripts/setup-haproxy.sh) — установка и настройка HAProxy;
+- [`setup-keepalived.sh`](scripts/setup-keepalived.sh) — установка и настройка Keepalived.
 
 Описание принципа работы скриптов приведено ниже в документации.
 
