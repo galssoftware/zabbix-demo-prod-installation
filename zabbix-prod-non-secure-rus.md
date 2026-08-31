@@ -422,7 +422,7 @@ tags:
   clonefrom: false
   nosync: false
 ```
-Перезагрузите Patroni
+Запустите Patroni и добавьте сервис в автозугркзку
 ```
 systemctl enable patroni --now
 ```
