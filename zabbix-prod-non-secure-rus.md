@@ -157,7 +157,7 @@ EOF
 ```
 rm -rf /var/lib/etcd/default
 ```
-На каждой ноде добавьте etcd в автозагрузку и перезапустите его
+На каждой ноде pg01, pg02, pg03 добавьте etcd в автозагрузку и перезапустите его
 ```
 systemctl enable etcd
 systemctl restart etcd
@@ -476,7 +476,7 @@ systemctl enable pgbouncer
 systemctl stop pgbouncer
 ```
 
-Создайте необходимые роли Zabbix и базы данных. Необходимо создать 2 базы (zabbix_server и grafana), а также 4 роли:
+Подключитесь к лидер-ноде и создайте необходимые роли Zabbix и базы данных. Необходимо создать 2 базы (zabbix_server и grafana), а также 4 роли:
 `zabbix_srv` будет использоваться для подключения Zabbix Server к БД Zabbix
 `zabbix_web` будет использоваться для подключения Zabbix Frontend к БД Zabbix. Создайте отдельного пользователя Zabbix Frontend для упрощения диагностики работы БД в будущем.
 `grafana_zabbix` будет использоваться для подключения Grafana к БД Zabbix
