@@ -1615,7 +1615,7 @@ systemctl daemon-reload
 systemctl enable grafana-server
 grafana cli plugins install alexanderzobnin-zabbix-app
 ```
-Настройте Grafana. Выполните на обоих се
+Настройте Grafana. Выполните на обоих серверах grafana01/02
 ```
 nano /etc/grafana/grafana.ini
 [server]
@@ -1644,10 +1644,10 @@ systemctl status grafana-server
 Перейдите в раздел Administration → Plugins and data → Plugins, найдите и включите плагин Zabbix
 ![zabbix-plugin-enable](images/zabbix-plugin-enable.png)
 
-zabbix-plugin-enable.png Перейдите в раздел Connections → Datasources и добавьте новый источник данных типа Zabbix.
+Перейдите в раздел Connections → Datasources и добавьте новый источник данных типа Zabbix.
 ![grafana-postgres-datasource](images/zabbix-postgresql-datasource.png)
 
-Далее настройте плагин. Укажите реквизиты подключения к Zabbix
+Далее настройте плагин. Укажите реквизиты подключения к Zabbix (https://haproxy.gals.training/zabbix/api_jsonrpc.php)
 ![zabbix-plugin-settings-zabbix](images/zabbix-plugin-settings-zabbix.png)
 
 Дополнительно настройте Direct DB Connection
