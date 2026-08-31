@@ -1,6 +1,6 @@
 # Безопасный Zabbix Demo
 
-Это продолжение части, где мы разворачивали отказоустойчивый Zabbix. Теперь мы сделаем так, чтобы **шифрование не заканчивалось на HAProxy**, а сохранялось до Grafana/Zabbix и PostgreSQL. Схема взаимодействия компонентов приведена ниже.
+Это продолжение части, где мы [разворачивали отказоустойчивый Zabbix](zabbix-prod-non-secure-rus.md). Теперь мы сделаем так, чтобы **шифрование не заканчивалось на HAProxy**, а сохранялось до Grafana/Zabbix и PostgreSQL. Схема взаимодействия компонентов приведена ниже.
 
 ```text
 Пользователь
@@ -26,6 +26,8 @@ Zabbix Server ── TLS verify-full ──► PostgreSQL
 Grafana       ── TLS verify-full ──► PostgreSQL
 Zabbix Web    ── TLS verify-full ──► PostgreSQL
 ```
+Все настройки выполняются на базе ранее развернутого окружения
+![Architecture Diagram](images/demo-installation.svg)
 
 ## Настройка разрешения имен хостов
 
