@@ -438,7 +438,7 @@ backend zabbix_servers
     balance roundrobin
 
     option httpchk GET /
-    http-check expect status 200
+    http-check expect rstatus ^[23][0-9][0-9]$
 
     default-server inter 5s fall 3 rise 2
 
