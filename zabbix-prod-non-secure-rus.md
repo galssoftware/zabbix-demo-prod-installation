@@ -576,7 +576,7 @@ psql \
 В этом разделе описаны принципы работы скриптов-установщиков и порядок действий для установки компонентов.
 
 ### Установка HAProxy
-Выполните установку HAProxy на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-haproxy.sh`](configs/setup-haproxy.sh).
+Выполните установку HAProxy на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-haproxy.sh`](scripts/setup-haproxy.sh).
 
 
 <details>
@@ -1075,7 +1075,7 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 
 ### Установка Keepalived
 
-Выполните установку Keepalived на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-keepalived.sh`](configs/setup-keepalived.sh).
+Выполните установку Keepalived на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-keepalived.sh`](scripts/setup-keepalived.sh).
 
 <details>
 <summary>Детальное описание принципов работы скрипта</summary>
