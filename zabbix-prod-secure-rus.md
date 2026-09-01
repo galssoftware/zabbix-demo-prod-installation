@@ -132,25 +132,10 @@ postgresql:
     - hostssl replication replicator 192.168.0.22/32 scram-sha-256
     - hostssl all all 192.168.0.0/24 scram-sha-256
 ```
-Отредактируйте конфигурацию Patroni, добавив параметр `sslmode` в блок `authentication` на серверах pg01/02/03
-```
-nano /etc/patroni/config.yml
-  authentication:
-    superuser:
-      username: postgres
-      password: 2tdxZ898D9MR
-      sslmode: require
-    replication:
-      username: replicator
-      password: 2tdxZ898D9MR
-      sslmode: require
-```
-Перезагрузите сервис Patroni на серверах pg01/02/03
-```
-systemctl restart patroni
-```
 Отредактируйте настройки PGBouncer на серверах pg01/02/03, добавив следующие параметры:
 ```
+nano /etc/pgbouncer/pgbouncer.ini
+
 [pgbouncer]
 
 ; =========================================================
@@ -251,7 +236,7 @@ backend zabbix_servers
     http-request set-header X-Forwarded-Port 443
 
     option httpchk GET /
-    http-check expect status 200
+    http-check expect rstatus ^[23][0-9][0-9]$
 
     default-server inter 5s fall 3 rise 2
 
