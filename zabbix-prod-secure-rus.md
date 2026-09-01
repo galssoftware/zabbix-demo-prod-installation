@@ -345,7 +345,7 @@ ca_cert_path = /etc/grafana/tls/postgres-ca.crt
 secret_key = <укажите секретный ключ из предыдущего шага>
 cookie_secure = true
 strict_transport_security = true
-strict_transport_security_max_age_seconds = 31536000
+strict_transport_security_max_age_seconds = 86400
 ```
 
 
@@ -387,13 +387,13 @@ TLSKeyFile=/etc/zabbix/tls/server.key
 TLSCAFile=/etc/zabbix/tls/internal-ca.crt
 EOF
 ```
-Отредактируйте конфигурацию Zabbix Frontend, раскомментировав записи. В нашей конфигурации при размещении Zabbix Frontend и Zabbix Server на одном и том же узле настройки шифрования не имеют смысла, однако, если размещать их на разных узлах, шифрование будет полезно.
+Отредактируйте конфигурацию Zabbix Frontend, раскомментировав записи. В нашей конфигурации при размещении Zabbix Frontend и Zabbix Server на одном и том же узле настройки шифрования не имеют смысла, однако, если размещать их на разных узлах, шифрование будет полезно. Обратите внимание, что для Zabbix Frontend мы используем отдельную пару ключей.
 ```
 nano /usr/share/zabbix/ui/conf/zabbix.conf.php
 $ZBX_SERVER_TLS['ACTIVE'] = 'true';
-$ZBX_SERVER_TLS['CA_FILE'] = '/etc/zabbix/tls/ca.crt';
-$ZBX_SERVER_TLS['KEY_FILE'] = '/etc/zabbix/tls/server.key';
-$ZBX_SERVER_TLS['CERT_FILE'] = '/etc/zabbix/tls/server.crt';
+$ZBX_SERVER_TLS['CA_FILE'] = '/etc/zabbix/tls/internal-ca.crt';
+$ZBX_SERVER_TLS['KEY_FILE'] = '/etc/zabbix/tls/frontend.key';
+$ZBX_SERVER_TLS['CERT_FILE'] = '/etc/zabbix/tls/frontend.crt';
 ```
 Перезагрузите службы Zabbix server, Nginx, PHP-FPM
 ```
