@@ -107,12 +107,6 @@ postgres.gals.training
         └── pg03
 ```
 
-На предыдущем шаге вы уже скопировали сертификаты на серверы pg01/02/03 в каталог `/etc/postgresql/tls/`. Теперь вам нужно перезагрузить службу СУБД на каждом сервере, используя Patroni. Выполните следующие три команды с одного из серверов pg01/02/03
-```
-patronictl -c /etc/patroni/config.yml restart postgres-cluster pg02
-patronictl -c /etc/patroni/config.yml restart postgres-cluster pg03
-patronictl -c /etc/patroni/config.yml restart postgres-cluster pg01
-```
 Далее выполните настройку СУБД через Patroni. В секции `parameters` и `pg_hba` необходимо добавить новые записи (имеющиеся записи оставить без изменений). Таким образом, мы дадим возможность подключаться к БД через SSL. В приведенных ниже настройках Patroni в продукционных средах, вероятно, нужно ужесточить настройки для подключения.
 ```
 patronictl -c /etc/patroni/config.yml edit-config
@@ -132,6 +126,13 @@ postgresql:
     - hostssl replication replicator 192.168.0.22/32 scram-sha-256
     - hostssl all all 192.168.0.0/24 scram-sha-256
 ```
+Теперь вам нужно перезагрузить службу СУБД на каждом сервере, используя Patroni. Выполните следующие три команды с одного из серверов pg01/02/03. Начните перезагрузку с реплик и закончите лидером
+```
+patronictl -c /etc/patroni/config.yml restart postgres-cluster pg02
+patronictl -c /etc/patroni/config.yml restart postgres-cluster pg03
+patronictl -c /etc/patroni/config.yml restart postgres-cluster pg01
+```
+
 Отредактируйте настройки PGBouncer на серверах pg01/02/03, добавив следующие параметры:
 ```
 nano /etc/pgbouncer/pgbouncer.ini
