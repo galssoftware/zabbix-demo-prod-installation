@@ -125,6 +125,7 @@ postgresql:
 +   - hostssl replication replicator 192.168.0.21/32 scram-sha-256
 +   - hostssl replication replicator 192.168.0.22/32 scram-sha-256
 +   - hostssl all all 192.168.0.0/24 scram-sha-256
++   - hostssl all all 127.0.0.1/32 scram-sha-256
 ```
 Теперь вам нужно перезагрузить службу СУБД на каждом сервере, используя Patroni. Выполните следующие три команды с одного из серверов pg01/02/03. Начните перезагрузку с реплик и закончите лидером
 ```
@@ -314,11 +315,13 @@ psql -h postgres.gals.training -p 5432 -U grafana -d grafana \
 ```bash
 PGPASSWORD='2tdxZ898D9MR' PGSSLMODE=verify-full \
 PGSSLROOTCERT=/etc/grafana/tls/postgres-ca.crt \
-psql -h postgres.gals.training -p 5433 -U grafana_zabbix -d zabix_server \
+psql -h postgres.gals.training -p 5433 -U grafana_zabbix -d zabbix_server \
 -c "select ssl,version,cipher from pg_stat_ssl where pid=pg_backend_pid();"
 ```
 Обновите конфигурацию Grafana
 ```
+nano /etc/grafana/grafana.ini
+
 [server]
 protocol = https
 http_addr = 0.0.0.0
