@@ -250,8 +250,8 @@ backend zabbix_servers
     http-request set-header X-Forwarded-Prefix /zabbix
     http-request set-header X-Forwarded-Proto https
 
--   server zbx01 ${ZABBIX_NODE1}:80 check
--   server zbx02 ${ZABBIX_NODE2}:80 check
+-   server zbx01 192.168.0.10:80 check
+-   server zbx02 192.168.0.11:80 check
 +   server zbx01 192.168.0.10:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx01 sni str(zbx01)
 +   server zbx02 192.168.0.11:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx02 sni str(zbx02)
 
@@ -276,8 +276,8 @@ backend grafana_servers
     http-request set-header X-Forwarded-Proto https
     http-request set-header X-Forwarded-Host %[req.hdr(Host)]
 
--   server grafana01 ${GRAFANA_NODE1}:3000 check
--   server grafana02 ${GRAFANA_NODE2}:3000 check
+-   server grafana01 192.168.0.4:3000 check
+-   server grafana02 192.168.0.5:3000 check
 +   server grafana01 192.168.0.4:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana01 sni str(grafana01)
 +   server grafana02 192.168.0.5:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana02 sni str(grafana02)
 ```
