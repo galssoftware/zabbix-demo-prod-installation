@@ -413,8 +413,10 @@ apt install -y zabbix-agent2 zabbix-agent2-plugin-postgresql
 ```
 В конфигурации агентов закомментируйте параметр Hostname, а также установите параметры Server и ServerActive в следующие значения:
 ```
+cat << EOF >> /etc/zabbix/zabbix_agent2.conf
 Server=192.168.0.10,192.168.0.11
 ServerActive=192.168.0.10;192.168.0.11
+EOF
 ```
 Перезапустите агентов на всех трех серверах pg01/02/03
 ```
@@ -430,9 +432,10 @@ systemctl restart zabbix-agent2
 
 Отредактируйте конфигурацию плагина PostgreSQL, согласно примеру ниже на агентах серверах БД pg01/02/03
 ```
-nano /etc/zabbix/zabbix_agent2.d/plugins.d/postgresql.conf
+cat << EOF >>  /etc/zabbix/zabbix_agent2.d/plugins.d/postgresql.conf
 Plugins.PostgreSQL.Sessions.Monitoring.Uri=tcp://127.0.0.1:5432
 Plugins.PostgreSQL.Sessions.Monitoring.TLSConnect=required
+EOF
 ```
 Перезапустите агентов на всех трех серверах pg01/02/03
 ```
@@ -443,3 +446,17 @@ systemctl restart zabbix-agent2
 
 Для проверки подключения перейдите в раздел Explore и настройте отображение произвольной метрики
 ![grafana-explore](images/grafana-explore.png)
+
+Измените настройки безопасности Zabbix Agent 2 на всех трех серверах pg01/02/03
+```
+cat << EOF >> /etc/zabbix/zabbix_agent2.conf
+TLSAccept=cert
+TLSCAFile=/etc/zabbix/tls/ca.crt
+TLSCertFile=/etc/zabbix/tls/agent.crt
+TLSKeyFile=/etc/zabbix/tls/agent.key
+EOF
+```
+Перезапустите агентов на всех трех серверах pg01/02/03
+```
+systemctl restart zabbix-agent2
+```
