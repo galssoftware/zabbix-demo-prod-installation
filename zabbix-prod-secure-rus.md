@@ -47,7 +47,7 @@ getent hosts postgres.gals.training
 
 
 ## Генерация сертификатов
-Для генерации сертификатов выполним скрипт `generate-pki.sh`
+Для генерации сертификатов выполним скрипт [`generate-pki.sh`](scripts/generate-pki.sh)
 ```bash
 bash generate-pki.sh /root/gals-pki
 ```
@@ -85,7 +85,7 @@ gals-pki/
 openssl x509 -in /root/gals-pki/certs/pg01.crt -noout -ext subjectAltName
 ```
 
-На том же сервере выполните скрипт `deploy-pki.sh`, который:
+На том же сервере выполните скрипт [`deploy-pki.sh`](scripts/deploy-pki.sh), который:
 - копирует сертификаты на серверы haproxy01/02, zbx01/02, grafana01/02, pg01/02/03;
 - создаёт каталоги;
 - раскладывает файлы под стандартными именами;
