@@ -108,23 +108,23 @@ postgres.gals.training
 ```
 
 Далее выполните настройку СУБД через Patroni. В секции `parameters` и `pg_hba` необходимо добавить новые записи (имеющиеся записи оставить без изменений). Таким образом, мы дадим возможность подключаться к БД через SSL. В приведенных ниже настройках Patroni в продукционных средах, вероятно, нужно ужесточить настройки для подключения.
-```
+```diff
 patronictl -c /etc/patroni/config.yml edit-config
 
 postgresql:
   parameters:
-    ssl: 'on'
-    ssl_ca_file: /etc/postgresql/tls/ca.crt
-    ssl_cert_file: /etc/postgresql/tls/server.crt
-    ssl_key_file: /etc/postgresql/tls/server.key
-    ssl_min_protocol_version: TLSv1.2
-  pg_hba:
-    - local all all peer
-    - hostssl replication replicator 127.0.0.1/32 scram-sha-256
-    - hostssl replication replicator 192.168.0.20/32 scram-sha-256
-    - hostssl replication replicator 192.168.0.21/32 scram-sha-256
-    - hostssl replication replicator 192.168.0.22/32 scram-sha-256
-    - hostssl all all 192.168.0.0/24 scram-sha-256
++   ssl: 'on'
++   ssl_ca_file: /etc/postgresql/tls/ca.crt
++   ssl_cert_file: /etc/postgresql/tls/server.crt
++   ssl_key_file: /etc/postgresql/tls/server.key
++   ssl_min_protocol_version: TLSv1.2
++ pg_hba:
++   - local all all peer
++   - hostssl replication replicator 127.0.0.1/32 scram-sha-256
++   - hostssl replication replicator 192.168.0.20/32 scram-sha-256
++   - hostssl replication replicator 192.168.0.21/32 scram-sha-256
++   - hostssl replication replicator 192.168.0.22/32 scram-sha-256
++   - hostssl all all 192.168.0.0/24 scram-sha-256
 ```
 Теперь вам нужно перезагрузить службу СУБД на каждом сервере, используя Patroni. Выполните следующие три команды с одного из серверов pg01/02/03. Начните перезагрузку с реплик и закончите лидером
 ```
@@ -249,6 +249,8 @@ backend zabbix_servers
     http-request set-header X-Forwarded-Prefix /zabbix
     http-request set-header X-Forwarded-Proto https
 
+-   server zbx01 ${ZABBIX_NODE1}:80 check
+-   server zbx02 ${ZABBIX_NODE2}:80 check
 +   server zbx01 192.168.0.10:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx01 sni str(zbx01)
 +   server zbx02 192.168.0.11:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx02 sni str(zbx02)
 
@@ -273,6 +275,8 @@ backend grafana_servers
     http-request set-header X-Forwarded-Proto https
     http-request set-header X-Forwarded-Host %[req.hdr(Host)]
 
+-   server grafana01 ${GRAFANA_NODE1}:3000 check
+-   server grafana02 ${GRAFANA_NODE2}:3000 check
 +   server grafana01 192.168.0.4:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana01 sni str(grafana01)
 +   server grafana02 192.168.0.5:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana02 sni str(grafana02)
 ```
