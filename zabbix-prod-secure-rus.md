@@ -356,6 +356,9 @@ systemctl restart grafana-server
 Перейдите к настройкам плагина для PostgreSQL. Обратите внимание, что мы будет обращаться к БД по общему адресу, а также указываем путь к корневому сертификату для проверки пользователю. После нажатия на кнопку `Save & test` должно выдаваться сообщение `Database Connection OK`
 ![Grafana Secured PostgreSQL](images/grafana_secured_postgresql.png)
 
+Для проверки подключения перейдите в раздел Explore и настройте отображение произвольной метрики
+![grafana-explore](images/grafana-explore.png)
+
 ## Итоговая конфигурация
 
 | Соединение                   | Защита                           |
@@ -404,7 +407,7 @@ systemctl restart zabbix-server nginx php8.3-fpm
 tail -f /var/log/zabbix/zabbix_server.log
 ```
 ### Настройки безопасного подключения Zabbix агент <-> Zabbix Server
-Установим агентов Zabbix на серверах БД pg01/02/03
+Установите агентов Zabbix на серверах pg01/02/03, grafana01/02, haproxy01/02
 ```
 wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest+ubuntu24.04_all.deb
 dpkg -i zabbix-release_latest+ubuntu24.04_all.deb
@@ -418,7 +421,7 @@ Server=192.168.0.10,192.168.0.11
 ServerActive=192.168.0.10;192.168.0.11
 EOF
 ```
-Перезапустите агентов на всех трех серверах pg01/02/03
+Перезапустите агентов на серверах pg01/02/03, grafana01/02, haproxy01/02
 ```
 systemctl restart zabbix-agent2
 ```
@@ -444,10 +447,7 @@ systemctl restart zabbix-agent2
 Выполните настройки в шаблоне PostgreSQL, указав реквизиты доступа к БД
 ![Template Macro Settings](images/template_macro_settings.png)
 
-Для проверки подключения перейдите в раздел Explore и настройте отображение произвольной метрики
-![grafana-explore](images/grafana-explore.png)
-
-Измените настройки безопасности Zabbix Agent 2 на всех трех серверах pg01/02/03
+Измените настройки безопасности Zabbix Agent 2 на серверах pg01/02/03, grafana01/02, haproxy01/02
 ```
 cat << EOF >> /etc/zabbix/zabbix_agent2.conf
 TLSAccept=cert
@@ -456,7 +456,9 @@ TLSCertFile=/etc/zabbix/tls/agent.crt
 TLSKeyFile=/etc/zabbix/tls/agent.key
 EOF
 ```
-Перезапустите агентов на всех трех серверах pg01/02/03
+Перезапустите агентов на серверах pg01/02/03, grafana01/02, haproxy01/02
 ```
 systemctl restart zabbix-agent2
 ```
+При помощи меню Mass update обновите настройки подключения к агентам с использованием сертификата. После этого статус подкоючения к агентам должен измениться на зеленый
+![Cert Connection](images/cert_connection.png)
