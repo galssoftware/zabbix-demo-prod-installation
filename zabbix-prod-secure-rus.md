@@ -273,8 +273,8 @@ backend grafana_servers
     http-request set-header X-Forwarded-Proto https
     http-request set-header X-Forwarded-Host %[req.hdr(Host)]
 
-    server grafana01 192.168.0.4:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana01 sni str(grafana01)
-    server grafana02 192.168.0.5:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana02 sni str(grafana02)
++   server grafana01 192.168.0.4:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana01 sni str(grafana01)
++   server grafana02 192.168.0.5:3000 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost grafana02 sni str(grafana02)
 ```
 
 Проверьте корректность настроек HAProxy и перезагрузите сервис HAProxy
