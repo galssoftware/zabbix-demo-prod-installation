@@ -173,17 +173,18 @@ SHOW password_encryption;
 
 ## Настройка Zabbix
 Измените настройки nginx.conf на серверах zbx01/02
-```
+```diff
 nano /etc/nginx/conf.d/zabbix.conf
 server {
-    listen 443 ssl;
++   listen 443 ssl;
+-   listen 80;
     server_name _;
 
-    ssl_certificate     /etc/zabbix/tls/server.crt;
-    ssl_certificate_key /etc/zabbix/tls/server.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
++   ssl_certificate     /etc/zabbix/tls/server.crt;
++   ssl_certificate_key /etc/zabbix/tls/server.key;
++   ssl_protocols TLSv1.2 TLSv1.3;
++   ssl_session_cache shared:SSL:10m;
++   ssl_session_timeout 1d;
 ```
 
 Добавьте новые записи в конфгурацию Zabbix Server на серверах zbx01/02
