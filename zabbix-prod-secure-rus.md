@@ -224,7 +224,7 @@ systemctl restart zabbix-server php8.3-fpm nginx
 ## Настройка HAProxy
 
 Приведите настройки блоков `Zabbix frontend cluster` и `Grafana cluster` к редиректу на порт 443 согласно конфигурации ниже
-```
+```diff
 nano /etc/haproxy/haproxy.cfg
 
 ##########################################################
@@ -249,8 +249,8 @@ backend zabbix_servers
     http-request set-header X-Forwarded-Prefix /zabbix
     http-request set-header X-Forwarded-Proto https
 
-    server zbx01 192.168.0.10:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx01 sni str(zbx01)
-    server zbx02 192.168.0.11:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx02 sni str(zbx02)
+ +  server zbx01 192.168.0.10:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx01 sni str(zbx01)
+ +  server zbx02 192.168.0.11:443 check ssl verify required ca-file /etc/haproxy/ca/internal-ca.crt verifyhost zbx02 sni str(zbx02)
 
 
 ##########################################################
