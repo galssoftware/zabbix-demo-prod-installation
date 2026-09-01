@@ -451,7 +451,7 @@ systemctl restart zabbix-agent2
 ```
 cat << EOF >> /etc/zabbix/zabbix_agent2.conf
 TLSAccept=cert
-TLSCAFile=/etc/zabbix/tls/ca.crt
+TLSCAFile=/etc/zabbix/tls/internal-ca.crt
 TLSCertFile=/etc/zabbix/tls/agent.crt
 TLSKeyFile=/etc/zabbix/tls/agent.key
 EOF
