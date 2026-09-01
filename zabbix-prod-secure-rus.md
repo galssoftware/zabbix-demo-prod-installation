@@ -225,6 +225,8 @@ systemctl restart zabbix-server php8.3-fpm nginx
 
 Приведите настройки блоков `Zabbix frontend cluster` и `Grafana cluster` к редиректу на порт 443 согласно конфигурации ниже
 ```
+nano /etc/haproxy/haproxy.cfg
+
 ##########################################################
 # Zabbix frontend cluster
 ##########################################################
