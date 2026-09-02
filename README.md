@@ -1,6 +1,6 @@
 # Отказоустойчивая и защищённая инсталляция Zabbix
 
-Этот репозиторий содержит практическое руководство по построению отказоустойчивой Zabbix-инфраструктуры и её последующему переводу на защищённые соединения с использованием TLS-сертификатов.
+Этот репозиторий содержит сценарий построения отказоустойчивой Zabbix-инфраструктуры и её последующеий перевод на защищённые соединения с использованием TLS-сертификатов.
 
 Проект разделён на два последовательных этапа:
 
@@ -21,8 +21,6 @@
 | PostgreSQL | `pg01`, `pg02`, `pg03` | Отказоустойчивый кластер базы данных |
 
 Виртуальный IP, управляемый Keepalived, обеспечивает единый адрес подключения. HAProxy определяет текущий PostgreSQL Primary через Patroni API, направляет соединения на активную ноду и балансирует запросы чтения между репликами.
-
-[Открыть схему инсталляции](https://github.com/galssoftware/zabbix-demo-prod-installation/blob/main/images/demo-installation.svg)
 
 [![Схема инсталляции](images/demo-installation.svg)](https://github.com/galssoftware/zabbix-demo-prod-installation/blob/main/images/demo-installation.svg)
 
@@ -47,7 +45,7 @@
 
 На этом этапе создаётся работоспособная отказоустойчивая система, но внутренние соединения между HAProxy, Zabbix, Grafana и PostgreSQL ещё не полностью защищены TLS.
 
-Подробная инструкция: [Базовая отказоустойчивая инсталляция](https://github.com/galssoftware/zabbix-demo-prod-installation/blob/main/zabbix-prod-non-secure-rus.md).
+Подробная инструкция: [Базовая отказоустойчивая инсталляция](zabbix-prod-non-secure-rus.md).
 
 ## Этап 2. Защита внутренних соединений
 
@@ -84,7 +82,7 @@ Grafana         ── TLS verify-full ──► PostgreSQL
 Zabbix Server   ◄── TLS certificates ──► Zabbix Agent 2
 ```
 
-Подробная инструкция: [Настройка защищённой инсталляции](https://github.com/galssoftware/zabbix-demo-prod-installation/blob/main/zabbix-prod-secure-rus.md).
+Подробная инструкция: [Настройка защищённой инсталляции](zabbix-prod-secure-rus.md).
 
 ## Порядок использования
 
