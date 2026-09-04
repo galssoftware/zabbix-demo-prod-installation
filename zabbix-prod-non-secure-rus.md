@@ -577,7 +577,9 @@ psql \
 
 ### Установка HAProxy
 Выполните установку HAProxy на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-haproxy.sh`](scripts/setup-haproxy.sh).
-
+```
+bash setup-haproxy.sh
+```
 
 <details>
 <summary>Детальное описание принципов работы скрипта</summary>
@@ -1076,6 +1078,9 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 ### Установка Keepalived
 
 Выполните установку Keepalived на обоих нодах haproxy: haproxy01 и haproxy02 при помощи скрипта [`setup-keepalived.sh`](scripts/setup-keepalived.sh).
+```
+bash setup-keepalived.sh
+```
 
 <details>
 <summary>Детальное описание принципов работы скрипта</summary>
