@@ -94,6 +94,8 @@ openssl x509 -in /root/gals-pki/certs/pg01.crt -noout -ext subjectAltName
 - не копирует internal-ca.key;
 - после копирования проверяет сертификаты на удалённых узлах.
 
+В конце работы скрипта вы увидите ошибку распространения ключей агентов Zabbix на серверы, где отсутствует учетная запись zabbix. Это нормально, чуть позже это скрипт нужно будет выполнить повторно.
+
 ## Настройка СУБД
 Взимодействие с БД будет выглядеть следующим образом
 ```
@@ -407,7 +409,14 @@ systemctl restart zabbix-server nginx php8.3-fpm
 tail -f /var/log/zabbix/zabbix_server.log
 ```
 ### Настройки безопасного подключения Zabbix агент <-> Zabbix Server
-Установите агентов Zabbix на серверах pg01/02/03, grafana01/02, haproxy01/02
+Установите агенты Zabbix на серверах pg01/02/03
+```
+wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest+ubuntu24.04_all.deb
+dpkg -i zabbix-release_latest+ubuntu24.04_all.deb
+apt update
+apt install -y zabbix-agent2 zabbix-agent2-plugin-postgresql
+```
+Установите агенты Zabbix на серверах grafana01/02, haproxy01/02
 ```
 wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest+ubuntu24.04_all.deb
 dpkg -i zabbix-release_latest+ubuntu24.04_all.deb
@@ -421,6 +430,11 @@ Server=192.168.0.10,192.168.0.11
 ServerActive=192.168.0.10;192.168.0.11
 EOF
 ```
+Запустите еще раз распространение ключей скриптом [`deploy-pki.sh`](scripts/deploy-pki.sh), т.к. при первом его запуске он не смог распространить ключи агентов на серверы, где отсутствует учетнаё запись zabbix
+```
+bash deploy-pki.sh
+```
+
 Перезапустите агентов на серверах pg01/02/03, grafana01/02, haproxy01/02
 ```
 systemctl restart zabbix-agent2
