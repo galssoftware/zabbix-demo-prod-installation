@@ -372,7 +372,7 @@ systemctl restart grafana-server
 | Zabbix Server → PostgreSQL   | `DBTLSConnect=verify_full`       |
 | Zabbix frontend → PostgreSQL | TLS + `VERIFY_HOST=true`         |
 | PostgreSQL authentication    | SCRAM-SHA-256                    |
-| Patroni API                  | только dвн. доступ                  |
+| Patroni API                  | только вн. доступ                  |
 | HAProxy stats                | localhost/VPN/SSH                |
 | Grafana :3000                | HTTPS                   |
 | PostgreSQL :5432             | Сертификат
