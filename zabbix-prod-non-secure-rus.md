@@ -205,11 +205,10 @@ pg_dropcluster --stop 18 main
 apt install -y patroni
 ```
 Отредактируйте конфигурацию Patroni
-```
-nano /etc/patroni/config.yml
-```
+
 На ноде pg01
 ```
+cat << EOF >> /etc/patroni/config.yml
 scope: postgres-cluster
 namespace: /service/
 name: pg01
@@ -280,9 +279,11 @@ tags:
   noloadbalance: false
   clonefrom: false
   nosync: false
+EOF
 ```
 На ноде pg02
 ```
+cat << EOF >> /etc/patroni/config.yml
 scope: postgres-cluster
 namespace: /service/
 name: pg02
@@ -353,9 +354,11 @@ tags:
   noloadbalance: false
   clonefrom: false
   nosync: false
+EOF
 ```
 На ноде pg03
 ```
+cat << EOF >> /etc/patroni/config.yml
 scope: postgres-cluster
 namespace: /service/
 name: pg03
@@ -426,6 +429,7 @@ tags:
   noloadbalance: false
   clonefrom: false
   nosync: false
+EOF
 ```
 Запустите Patroni и добавьте сервис в автозугркзку
 ```
@@ -501,12 +505,13 @@ SELECT rolname || '|' || rolpassword FROM pg_authid WHERE rolname IN ('postgres'
 ```
 Добавьте записи в конфигурационный файл /etc/pgbouncer/userlist.txt (выполните на 3 серверах БД: pg01, pg02, pg03). В вашем случае хэши паролей будут отличаться.
 ```
-nano /etc/pgbouncer/userlist.txt
+cat << EOF >> /etc/pgbouncer/userlist.txt
 "postgres" "SCRAM-SHA-256$4096:vOLwdJq2iQlAErxB/tmr3Q==$aGsEz/IDYGMWpircIyLuXJ5iZSKZqv1eFRQW7rgA2FA=:Gh+NhWMdjFPlgjo94WcB8bamojLi3vN4Jyf/RG10MKU="
 "zabbix_srv" "SCRAM-SHA-256$4096:Dt2pydTlGUvc9CckB8EGBw==$d6z6YYLy+A8B3bdxucXDVpg85gl84tIJehhIyHuVvwg=:R9NctBV2LcaXql3PsNDp3YuFjDVX2KftF9C2IENK3uE="
 "zabbix_web" "SCRAM-SHA-256$4096:AR8hHO9nLBjrZitlANy8IQ==$0qABD5ghyOyc8dmMZblvVV+SC22FNJsHkqP42y+I2dw=:MhL0utZXPhspp+QjsOoSyDfSlkaXM4vRkg31Zz5VCxA="
 "grafana_zabbix" "SCRAM-SHA-256$4096:vOLwdJq2iQlAErxB/tmr3Q==$aGsEz/IDYGMWpircIyLuXJ5iZSKZqv1eFRQW7rgA2FA=:Gh+NhWMdjFPlgjo94WcB8bamojLi3vN4Jyf/RG10MKU="
 "grafana" "SCRAM-SHA-256$4096:kHvnLIdYr4iXTNNpvxlOxQ==$T9fv3QwJEgpHf5geLicCJX5CO+lln/7AC29ev8GinKU=:xSoqpjhYH/nkHuvWH7R5cSHFaE29HOL3ekwLEB6pAg0="
+EOF
 ```
 Установите права на конфигурационный файл (выполните на 3 серверах БД: pg01, pg02, pg03)
 ```
